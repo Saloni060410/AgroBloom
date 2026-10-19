@@ -8,6 +8,7 @@ import { usePlotDetails, nextApplication } from '../hooks/usePlotDetails.js'
 import { soilHealthScore, soilHealthBand } from '../utils/soilHealth.js'
 import { daysFromToday, firstName, titleCase } from '../utils/format.js'
 import WeatherCard from '../components/layout/WeatherCard.jsx'
+import PageHeader from '../components/layout/PageHeader.jsx'
 import { BRAND } from '../components/brand/brand.js'
 
 function Kpi({ icon: Icon, label, value, tone = 'bg-primary-100 text-primary-700' }) {
@@ -65,13 +66,9 @@ export default function Overview() {
 
   return (
     <div className="space-y-8">
-      <header className="flex flex-col md:flex-row md:items-center justify-between gap-5 animate-reveal">
-        <div>
-          <h1 className="text-3xl sm:text-[2.2rem] font-bold text-ink-primary">Overview</h1>
-          <p className="mt-1 text-ink-secondary">Here is where your fields stand today, {firstName(user?.name)}.</p>
-        </div>
+      <PageHeader title="Overview" subtitle={`Here is where your fields stand today, ${firstName(user?.name)}.`}>
         <WeatherCard field={weatherField} />
-      </header>
+      </PageHeader>
 
       <section aria-label="Totals" className="grid sm:grid-cols-2 xl:grid-cols-4 gap-4 animate-reveal delay-1">
         <Kpi icon={Sprout} label="Fields" value={plots.length} />

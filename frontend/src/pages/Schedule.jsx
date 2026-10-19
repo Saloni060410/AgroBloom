@@ -8,6 +8,7 @@ import { useFieldHistory } from '../hooks/useFieldHistory.js'
 import { formatDate, titleCase, daysFromToday, roundQty } from '../utils/format.js'
 import ProductIcon from '../components/reco/ProductIcon.jsx'
 import PlotSwitcher from '../components/layout/PlotSwitcher.jsx'
+import PageHeader from '../components/layout/PageHeader.jsx'
 import { BRAND } from '../components/brand/brand.js'
 
 // There is no execution log for a plan line, only the plan and the real fertilizer logs. Status is
@@ -96,19 +97,13 @@ export default function Schedule() {
   const rainy = weather && weather.rainfallMmForecast >= 2
 
   return (
-    <div className="max-w-5xl mx-auto px-5 sm:px-8 py-8 space-y-8">
-      <div className="flex flex-wrap items-end justify-between gap-4 no-print">
-        <div>
-          <p className="text-sm font-semibold text-primary-700">{field ? `${field.name} · ${field.areaAcres ?? '?'} acres` : 'Loading field…'}</p>
-          <h1 className="text-3xl font-bold text-ink-primary mt-0.5">Application Schedule</h1>
-        </div>
-        <div className="flex flex-wrap items-center gap-3">
-          <PlotSwitcher fieldId={fieldId} suffix="/schedule" />
-          <button type="button" onClick={() => window.print()} className="inline-flex items-center gap-2 min-h-[46px] px-5 rounded-full border-2 border-primary-600 text-primary-700 hover:bg-primary-50 font-medium text-sm cursor-pointer transition-colors">
-            <Printer className="w-4 h-4" aria-hidden="true" /> Print retailer slip
-          </button>
-        </div>
-      </div>
+    <div className="space-y-8">
+      <PageHeader eyebrow={field ? `${field.name} · ${field.areaAcres ?? '?'} acres` : 'Loading field…'} title="Application Schedule">
+        <PlotSwitcher fieldId={fieldId} suffix="/schedule" />
+        <button type="button" onClick={() => window.print()} className="inline-flex items-center gap-2 min-h-[46px] px-5 rounded-full border-2 border-primary-600 text-primary-700 hover:bg-primary-50 font-medium text-sm cursor-pointer transition-colors">
+          <Printer className="w-4 h-4" aria-hidden="true" /> Print retailer slip
+        </button>
+      </PageHeader>
 
       {h.status === 'error' && (
         <div role="alert" className="p-4 rounded-md bg-risk-high-bg border border-risk-high-border text-risk-high-text text-sm flex justify-between gap-3">
