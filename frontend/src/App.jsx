@@ -2,9 +2,7 @@ import { useEffect, Suspense, lazy } from 'react'
 import { Route, Routes, Navigate } from 'react-router-dom'
 import RequireAuth from './components/layout/RequireAuth.jsx'
 import RouteErrorBoundary from './components/layout/RouteErrorBoundary.jsx'
-import SidebarShell from './components/layout/SidebarShell.jsx'
-import TopNavShell from './components/layout/TopNavShell.jsx'
-import PublicShell from './components/layout/PublicShell.jsx'
+import AppShell from './components/layout/AppShell.jsx'
 import { useUserStore } from './store/useUserStore.js'
 
 import Landing from './pages/Landing.jsx'
@@ -31,19 +29,14 @@ function RouteFallback() {
   )
 }
 
-const sidebarPage = (page) => (
+// Every page after sign-in shares one frame; 404/500 use it too but without the sign-in gate.
+const appPage = (page) => (
   <RequireAuth>
-    <SidebarShell>{page}</SidebarShell>
+    <AppShell>{page}</AppShell>
   </RequireAuth>
 )
 
-const fieldPage = (page, frame) => (
-  <RequireAuth>
-    <TopNavShell frame={frame}>{page}</TopNavShell>
-  </RequireAuth>
-)
-
-const publicPage = (page) => <PublicShell>{page}</PublicShell>
+const openPage = (page) => <AppShell>{page}</AppShell>
 
 export default function App() {
   const hydrate = useUserStore((s) => s.hydrate)
@@ -65,19 +58,19 @@ export default function App() {
           <Route path="/prescription" element={<Navigate to="/dashboard" replace />} />
           <Route path="/optimizer" element={<Navigate to="/" replace />} />
 
-          <Route path="/overview" element={sidebarPage(<Overview />)} />
-          <Route path="/dashboard" element={sidebarPage(<Dashboard />)} />
+          <Route path="/overview" element={appPage(<Overview />)} />
+          <Route path="/dashboard" element={appPage(<Dashboard />)} />
 
-          <Route path="/fields/:fieldId" element={fieldPage(<FieldProfile />)} />
-          <Route path="/fields/:fieldId/soil" element={fieldPage(<SoilInput />)} />
-          <Route path="/fields/:fieldId/recommendation" element={fieldPage(<Recommendation />, 'forest')} />
-          <Route path="/fields/:fieldId/schedule" element={fieldPage(<Schedule />)} />
-          <Route path="/fields/:fieldId/risk-check" element={fieldPage(<RiskCheck />)} />
-          <Route path="/fields/:fieldId/history" element={fieldPage(<History />, 'forest')} />
+          <Route path="/fields/:fieldId" element={appPage(<FieldProfile />)} />
+          <Route path="/fields/:fieldId/soil" element={appPage(<SoilInput />)} />
+          <Route path="/fields/:fieldId/recommendation" element={appPage(<Recommendation />)} />
+          <Route path="/fields/:fieldId/schedule" element={appPage(<Schedule />)} />
+          <Route path="/fields/:fieldId/risk-check" element={appPage(<RiskCheck />)} />
+          <Route path="/fields/:fieldId/history" element={appPage(<History />)} />
 
-          <Route path="/404" element={publicPage(<NotFound />)} />
-          <Route path="/500" element={publicPage(<ServerError />)} />
-          <Route path="*" element={publicPage(<NotFound />)} />
+          <Route path="/404" element={openPage(<NotFound />)} />
+          <Route path="/500" element={openPage(<ServerError />)} />
+          <Route path="*" element={openPage(<NotFound />)} />
         </Routes>
       </Suspense>
     </RouteErrorBoundary>
