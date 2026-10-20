@@ -26,10 +26,9 @@ constant in `src/components/brand/brand.js`. Illustrations are inline SVG in `sr
 (no image requests). The old 3D diorama UI was removed; `three`, R3F, GSAP and framer-motion are no longer
 imported and can be dropped from `package.json` in a follow-up.
 
-Layout: every page after sign-in (and 404/500) renders inside one `AppShell` (same top bar, content width and
-footer) and starts with a `PageHeader` (eyebrow, title, subtitle, actions). Only the landing page uses `SiteNav`;
-login and register use `AuthLayout`. Every field link goes through `useActiveField` so it always points at a
-real field id. All fields for the signed-in user come from `usePlotStore`.
+Shells: `SidebarShell` (Overview, My Fields, Reports), `TopNavShell` (field pages, `frame="forest"` for the
+recommendation and history screens), `PublicShell` (404/500). Every field link goes through `useActiveField`
+so it always points at a real field id. All fields for the signed-in user come from `usePlotStore`.
 
 ## Folder map
 
