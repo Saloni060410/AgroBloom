@@ -1,16 +1,15 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { Sparkles, Loader2, AlertCircle, Plus, Info } from 'lucide-react'
+import { Sparkles, Loader2, AlertCircle, ChevronDown, Plus, Info } from 'lucide-react'
 import useDocumentTitle from '../hooks/useDocumentTitle.js'
 import * as endpoints from '../services/endpoints.js'
 import { useRecommendationStore } from '../store/useRecommendationStore.js'
 import { usePlotStore } from '../store/usePlotStore.js'
 import { DEFAULT_RATINGS, ratingsFromReference } from '../utils/soilHealth.js'
 import { formatDate, titleCase } from '../utils/format.js'
-import PageHeader from '../components/layout/PageHeader.jsx'
-import PlotSwitcher from '../components/layout/PlotSwitcher.jsx'
 import CropCard, { CropTile } from '../components/soil/CropCard.jsx'
 import ParamDial from '../components/soil/ParamDial.jsx'
+import FieldScene from '../components/illustrations/FieldScene.jsx'
 import { BRAND } from '../components/brand/brand.js'
 
 const LOW = '#c9683f'
@@ -32,7 +31,7 @@ export default function SoilInput() {
   const navigate = useNavigate()
   useDocumentTitle(`Soil Diagnostics — ${BRAND.name}`)
 
-  const { loadPlots, updateField: updatePlotInStore } = usePlotStore()
+  const { plots, loadPlots, updateField: updatePlotInStore } = usePlotStore()
   const { generateRecommendation } = useRecommendationStore()
 
   const [field, setField] = useState(null)
@@ -177,16 +176,39 @@ export default function SoilInput() {
   const fertName = (id) => fertilizers.find((f) => f.id === id)?.name || titleCase(id)
 
   return (
-    <div className="space-y-10">
-      <PageHeader
-        eyebrow={field ? `${field.name}${field.areaAcres != null ? ` · ${field.areaAcres} acres` : ''}` : 'Loading field…'}
-        title="Soil Diagnostics"
-        subtitle="Pick the crop, enter the lab values from your soil test, and the model builds a dose from them."
-      >
-        <PlotSwitcher fieldId={fieldId} suffix="/soil" />
-      </PageHeader>
+    <div className="pb-16">
+      {/* Active field band */}
+      <div className="bg-primary-600 text-white">
+        <div className="max-w-6xl mx-auto px-5 sm:px-8 py-6">
+          <label htmlFor="active-field" className="text-sm font-semibold uppercase tracking-wider">
+            Select your active field:
+          </label>
+          <div className="mt-2 flex items-stretch max-w-xl bg-white rounded-md overflow-hidden text-ink-primary shadow-md">
+            <div className="w-16 shrink-0 bg-bg-muted">
+              <FieldScene crop={field?.cropType || 'wheat'} seed={5} className="w-full h-full" />
+            </div>
+            <div className="relative flex-1">
+              <select
+                id="active-field"
+                value={fieldId}
+                onChange={(e) => navigate(`/fields/${e.target.value}/soil`)}
+                className="w-full min-h-[52px] pl-4 pr-10 appearance-none bg-transparent text-base font-medium focus:outline-none cursor-pointer"
+              >
+                {plots.map(({ field: f }) => (
+                  <option key={f.id} value={f.id}>
+                    {f.name}
+                    {f.cropType ? ` (${titleCase(f.cropType)})` : ''}
+                  </option>
+                ))}
+                {!plots.some((p) => p.field.id === fieldId) && <option value={fieldId}>{field?.name || 'This field'}</option>}
+              </select>
+              <ChevronDown className="w-5 h-5 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" aria-hidden="true" />
+            </div>
+          </div>
+        </div>
+      </div>
 
-      <div className="space-y-10">
+      <div className="max-w-6xl mx-auto px-5 sm:px-8 pt-8 space-y-10">
         {loadError && (
           <div role="alert" className="p-4 rounded-md bg-risk-high-bg border border-risk-high-border text-risk-high-text text-sm">
             {loadError} <Link to="/dashboard" className="font-semibold underline">Back to My Fields</Link>
@@ -195,7 +217,7 @@ export default function SoilInput() {
 
         {/* 1. Crop */}
         <section aria-labelledby="step-crop">
-          <h2 id="step-crop" className="text-lg font-bold uppercase tracking-wide text-ink-primary">1. Select your current crop:</h2>
+          <h1 id="step-crop" className="text-lg font-bold uppercase tracking-wide text-ink-primary">1. Select your current crop:</h1>
           <div className="mt-5 grid grid-cols-[minmax(0,1fr)] lg:grid-cols-[19rem_minmax(0,1fr)] gap-8 items-start">
             {cropId ? (
               <CropCard

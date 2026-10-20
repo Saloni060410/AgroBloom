@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { ArrowRight, FlaskConical, CalendarDays, Sparkles, ShieldCheck, Droplets, Loader2, Check } from 'lucide-react'
+import { ArrowRight, FlaskConical, CalendarDays, Sparkles, ShieldCheck, MapPin, Droplets, Loader2, Check } from 'lucide-react'
 import useDocumentTitle from '../hooks/useDocumentTitle.js'
 import { useFieldHistory } from '../hooks/useFieldHistory.js'
 import { nextApplication } from '../hooks/usePlotDetails.js'
@@ -11,7 +11,6 @@ import { formatDate, titleCase, daysFromToday, capitalize, roundQty } from '../u
 import FieldScene from '../components/illustrations/FieldScene.jsx'
 import { RingGauge } from '../components/ui/Gauges.jsx'
 import PlotSwitcher from '../components/layout/PlotSwitcher.jsx'
-import PageHeader from '../components/layout/PageHeader.jsx'
 import WeatherCard from '../components/layout/WeatherCard.jsx'
 import { BRAND } from '../components/brand/brand.js'
 
@@ -77,7 +76,7 @@ export default function FieldProfile() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="max-w-5xl mx-auto px-5 sm:px-8 py-8 space-y-8">
       {h.status === 'error' && (
         <div role="alert" className="p-4 rounded-md bg-risk-high-bg border border-risk-high-border text-risk-high-text text-sm flex justify-between gap-3">
           <span>{h.error}</span>
@@ -85,22 +84,32 @@ export default function FieldProfile() {
         </div>
       )}
 
-      <PageHeader
-        eyebrow={field?.latitude != null ? `${field.latitude.toFixed(3)}, ${field.longitude.toFixed(3)}` : 'Field'}
-        title={field?.name || 'Loading…'}
-        subtitle={[
-          h.cropName(field?.cropType),
-          field?.cropVariety,
-          field?.areaAcres != null ? `${field.areaAcres} acres` : null,
-          field?.sowingDate ? `Sown ${formatDate(field.sowingDate)}` : null,
-          field?.irrigation ? capitalize(field.irrigation) : null,
-        ].filter(Boolean).join(' · ')}
-      >
-        <PlotSwitcher fieldId={fieldId} suffix="" />
-        {field && <WeatherCard field={field} />}
-      </PageHeader>
-
-      <FieldScene crop={field?.cropType || 'wheat'} seed={11} className="w-full h-40 sm:h-48 block rounded-lg border border-border-default shadow-md" />
+      <header className="rounded-lg overflow-hidden bg-white border border-border-default shadow-md">
+        <FieldScene crop={field?.cropType || 'wheat'} seed={11} className="w-full h-40 sm:h-52 block" />
+        <div className="p-5 sm:p-7 flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold text-ink-primary leading-tight">{field?.name || 'Loading…'}</h1>
+            <p className="mt-1 text-ink-secondary">
+              {[
+                h.cropName(field?.cropType),
+                field?.cropVariety,
+                field?.areaAcres != null ? `${field.areaAcres} acres` : null,
+                field?.sowingDate ? `Sown ${formatDate(field.sowingDate)}` : null,
+                field?.irrigation ? capitalize(field.irrigation) : null,
+              ].filter(Boolean).join(' · ')}
+            </p>
+            {field?.latitude != null && (
+              <p className="mt-1 text-sm text-ink-muted inline-flex items-center gap-1.5">
+                <MapPin className="w-4 h-4" aria-hidden="true" /> {field.latitude.toFixed(3)}, {field.longitude.toFixed(3)}
+              </p>
+            )}
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <PlotSwitcher fieldId={fieldId} suffix="" />
+            {field && <WeatherCard field={field} className="!min-w-[15rem]" />}
+          </div>
+        </div>
+      </header>
 
       <div className="grid md:grid-cols-[1fr_15rem] gap-6">
         <section aria-labelledby="next-action" className="bg-white rounded-lg border border-border-default shadow-md p-6 sm:p-7">

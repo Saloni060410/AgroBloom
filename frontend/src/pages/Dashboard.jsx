@@ -7,8 +7,8 @@ import { usePlotStore } from '../store/usePlotStore.js'
 import { usePlotDetails } from '../hooks/usePlotDetails.js'
 import * as endpoints from '../services/endpoints.js'
 import { firstName } from '../utils/format.js'
+import { Avatar } from '../components/layout/UserMenu.jsx'
 import WeatherCard from '../components/layout/WeatherCard.jsx'
-import PageHeader from '../components/layout/PageHeader.jsx'
 import FarmCard from '../components/farms/FarmCard.jsx'
 import AddFarmModal from '../components/farms/AddFarmModal.jsx'
 import Modal from '../components/ui/Modal.jsx'
@@ -63,9 +63,17 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-8">
-      <PageHeader title={`Welcome back, ${firstName(user?.name)}!`} subtitle="Pick a field to see its soil, plan and schedule.">
+      <header className="flex flex-col md:flex-row md:items-center justify-between gap-5 animate-reveal">
+        <div className="flex items-center gap-4">
+          <Avatar name={user?.name} size={72} className="ring-4 ring-white shadow-md" />
+          <h1 className="text-3xl sm:text-[2.2rem] font-bold text-ink-primary leading-tight">
+            Welcome back,
+            <br />
+            {firstName(user?.name)}!
+          </h1>
+        </div>
         <WeatherCard field={weatherField} />
-      </PageHeader>
+      </header>
 
       <section aria-labelledby="active-farmlands">
         <h2 id="active-farmlands" className="text-2xl font-semibold text-ink-primary mb-5">Active Farmlands</h2>

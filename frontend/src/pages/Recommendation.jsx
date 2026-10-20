@@ -11,7 +11,6 @@ import EcoMeter from '../components/reco/EcoMeter.jsx'
 import PlanExplainer from '../components/reco/PlanExplainer.jsx'
 import FilterSelect from '../components/reco/FilterSelect.jsx'
 import PlotSwitcher from '../components/layout/PlotSwitcher.jsx'
-import PageHeader from '../components/layout/PageHeader.jsx'
 import { SoilBagArt } from '../components/illustrations/SmallArt.jsx'
 import { BRAND } from '../components/brand/brand.js'
 
@@ -41,10 +40,11 @@ export default function Recommendation() {
   const fieldName = h.field?.name || 'Field'
 
   return (
-    <div className="space-y-8">
-      <PageHeader eyebrow={fieldName} title="Fertilizer Recommendation">
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-3 no-print">
+        <h1 className="text-2xl sm:text-[2rem] font-bold text-primary-900 leading-tight">Fertilizer Recommendation &amp; Field History</h1>
         <PlotSwitcher fieldId={fieldId} suffix="/recommendation" />
-      </PageHeader>
+      </div>
       <div className="print-only text-lg font-semibold">{BRAND.name} &middot; {fieldName} &middot; Fertilizer summary</div>
 
       {h.status === 'error' && (

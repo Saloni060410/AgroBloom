@@ -9,7 +9,6 @@ import { formatDate } from '../utils/format.js'
 import HistoryTimeline from '../components/reco/HistoryTimeline.jsx'
 import FilterSelect from '../components/reco/FilterSelect.jsx'
 import PlotSwitcher from '../components/layout/PlotSwitcher.jsx'
-import PageHeader from '../components/layout/PageHeader.jsx'
 import { RingGauge } from '../components/ui/Gauges.jsx'
 import { BRAND } from '../components/brand/brand.js'
 
@@ -53,13 +52,16 @@ export default function History() {
   const net = savings.reduce((a, b) => a + b, 0)
 
   return (
-    <div className="space-y-8">
-      <PageHeader eyebrow={fieldName} title="Field History">
-        <PlotSwitcher fieldId={fieldId} suffix="/history" />
-        <button type="button" onClick={() => window.print()} className="inline-flex items-center gap-2 min-h-[46px] px-5 rounded-full border-2 border-primary-600 text-primary-700 hover:bg-primary-50 font-medium text-sm cursor-pointer transition-colors">
-          <Download className="w-4 h-4" aria-hidden="true" /> Download PDF summary
-        </button>
-      </PageHeader>
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-3 no-print">
+        <h1 className="text-2xl sm:text-[2rem] font-bold text-primary-900 leading-tight">{fieldName} &middot; Field History</h1>
+        <div className="flex flex-wrap items-center gap-3">
+          <PlotSwitcher fieldId={fieldId} suffix="/history" />
+          <button type="button" onClick={() => window.print()} className="inline-flex items-center gap-2 min-h-[46px] px-5 rounded-full bg-bg-muted hover:bg-border-default font-semibold text-sm cursor-pointer transition-colors">
+            <Download className="w-4 h-4 text-terracotta-600" aria-hidden="true" /> Download PDF summary
+          </button>
+        </div>
+      </div>
       <div className="print-only">
         <h1 className="text-2xl font-bold">{BRAND.name} &middot; {fieldName}</h1>
         <p className="text-sm">Field history summary, printed {formatDate(new Date())}</p>
