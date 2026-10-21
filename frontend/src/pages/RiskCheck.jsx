@@ -20,7 +20,7 @@ export default function RiskCheck() {
   const field = currentField && String(currentField.id) === String(fieldId) ? currentField : null
 
   return (
-    <div className="max-w-4xl mx-auto px-5 sm:px-8 py-8 space-y-6 pb-16">
+    <div className="max-w-4xl space-y-6 pb-16">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Link to={`/fields/${fieldId}/recommendation`} className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary-700 hover:underline min-h-touch">
           <ChevronLeft className="w-4 h-4" aria-hidden="true" /> Back to the plan

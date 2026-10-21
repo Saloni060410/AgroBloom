@@ -17,9 +17,11 @@ export default function Footer({ dark = false, className = '' }) {
         <nav aria-label="Footer" className="text-sm space-y-2">
           <div className={`font-semibold ${dark ? 'text-white' : 'text-ink-primary'}`}>App</div>
           <ul className={`space-y-1.5 ${tone}`}>
+            <li><Link className="hover:underline" to="/overview">Overview</Link></li>
             <li><Link className="hover:underline" to="/dashboard">My Fields</Link></li>
-            <li><Link className="hover:underline" to={fieldPath('/soil')}>Soil Lab</Link></li>
-            <li><Link className="hover:underline" to={fieldPath('/recommendation')}>Fertilizer Calculator</Link></li>
+            <li><Link className="hover:underline" to={fieldPath('/soil')}>Soil test</Link></li>
+            <li><Link className="hover:underline" to={fieldPath('/schedule')}>Schedule</Link></li>
+            <li><Link className="hover:underline" to={fieldPath('/history')}>History</Link></li>
           </ul>
         </nav>
         <div className="text-sm space-y-2">

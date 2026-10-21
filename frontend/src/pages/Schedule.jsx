@@ -6,6 +6,7 @@ import * as endpoints from '../services/endpoints.js'
 import { useUserStore } from '../store/useUserStore.js'
 import { useFieldHistory } from '../hooks/useFieldHistory.js'
 import { formatDate, titleCase, daysFromToday, roundQty } from '../utils/format.js'
+import { lineApplied, notifyScheduleChanged } from '../utils/schedule.js'
 import ProductIcon from '../components/reco/ProductIcon.jsx'
 import PlotSwitcher from '../components/layout/PlotSwitcher.jsx'
 import { BRAND } from '../components/brand/brand.js'
@@ -68,6 +69,7 @@ export default function Schedule() {
         appliedOn: new Date().toISOString().slice(0, 10),
       })
       setExtra({ id: fieldId, list: [created, ...extraLogs] })
+      notifyScheduleChanged()
     } catch (err) {
       setMarkError(err?.message || 'Could not log this application. Try again.')
     } finally {
@@ -77,10 +79,7 @@ export default function Schedule() {
 
   const steps = (rec?.schedule || []).map((line, i) => {
     const m = meta[line.fertilizer_type]
-    const created = rec ? new Date(rec.createdAt) : null
-    // A log of the same product made after the plan counts the step as applied. With two lines of the
-    // same product this cannot tell them apart and marks both together.
-    const applied = logs.some((l) => l.type === line.fertilizer_type && created && new Date(l.appliedOn) >= new Date(created.toISOString().slice(0, 10)))
+    const applied = lineApplied(line, rec, logs)
     return {
       key: `${line.stage}-${line.fertilizer_type}-${i}`,
       line,
@@ -96,7 +95,7 @@ export default function Schedule() {
   const rainy = weather && weather.rainfallMmForecast >= 2
 
   return (
-    <div className="max-w-5xl mx-auto px-5 sm:px-8 py-8 space-y-8">
+    <div className="max-w-5xl space-y-8">
       <div className="flex flex-wrap items-end justify-between gap-4 no-print">
         <div>
           <p className="text-sm font-semibold text-primary-700">{field ? `${field.name} · ${field.areaAcres ?? '?'} acres` : 'Loading field…'}</p>

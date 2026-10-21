@@ -21,9 +21,11 @@ export default function SiteNav() {
   }
 
   const links = [
+    { to: '/overview', label: 'Overview' },
     { to: '/dashboard', label: 'My Fields' },
-    { to: fieldPath('/soil'), label: 'Soil Lab' },
-    { to: fieldPath('/recommendation'), label: 'Fertilizer Calculator' },
+    { to: fieldPath('/soil'), label: 'Soil test' },
+    { to: fieldPath('/schedule'), label: 'Schedule' },
+    { to: fieldPath('/history'), label: 'History' },
   ]
 
   const linkClass = ({ isActive }) =>
@@ -60,7 +62,7 @@ export default function SiteNav() {
           <Logo size={40} />
         </Link>
 
-        <nav aria-label="Main" className="hidden lg:flex items-center gap-9">
+        <nav aria-label="Main" className="hidden lg:flex items-center gap-7">
           {links.map((l) => (
             <NavLink key={l.label} to={l.to} className={linkClass}>
               {l.label}

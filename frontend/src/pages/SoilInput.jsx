@@ -7,6 +7,7 @@ import { useRecommendationStore } from '../store/useRecommendationStore.js'
 import { usePlotStore } from '../store/usePlotStore.js'
 import { DEFAULT_RATINGS, ratingsFromReference } from '../utils/soilHealth.js'
 import { formatDate, titleCase } from '../utils/format.js'
+import { notifyScheduleChanged } from '../utils/schedule.js'
 import CropCard, { CropTile } from '../components/soil/CropCard.jsx'
 import ParamDial from '../components/soil/ParamDial.jsx'
 import FieldScene from '../components/illustrations/FieldScene.jsx'
@@ -146,6 +147,7 @@ export default function SoilInput() {
         updatePlotInStore(fieldId, switched)
       }
       await generateRecommendation(fieldId, {})
+      notifyScheduleChanged()
       navigate(`/fields/${fieldId}/recommendation`)
     } catch (err) {
       setRunError(err?.message || 'The model could not run. Check the values and try again.')
@@ -165,6 +167,7 @@ export default function SoilInput() {
     try {
       const created = await endpoints.createFertilizerLog(fieldId, { type: newLog.type, quantityKgPerAcre: qty, appliedOn: newLog.date })
       setLogs((l) => [created, ...l])
+      notifyScheduleChanged()
       setNewLog((n) => ({ ...n, qty: '' }))
     } catch (err) {
       setLogError(err?.details?.fieldErrors?.appliedOn?.[0] || err?.message || 'Could not save this application.')
@@ -176,10 +179,10 @@ export default function SoilInput() {
   const fertName = (id) => fertilizers.find((f) => f.id === id)?.name || titleCase(id)
 
   return (
-    <div className="pb-16">
+    <div className="pb-16 max-w-6xl">
       {/* Active field band */}
-      <div className="bg-primary-600 text-white">
-        <div className="max-w-6xl mx-auto px-5 sm:px-8 py-6">
+      <div className="bg-primary-600 text-white rounded-lg shadow-md">
+        <div className="px-5 sm:px-8 py-6">
           <label htmlFor="active-field" className="text-sm font-semibold uppercase tracking-wider">
             Select your active field:
           </label>
@@ -208,7 +211,7 @@ export default function SoilInput() {
         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto px-5 sm:px-8 pt-8 space-y-10">
+      <div className="pt-8 space-y-10">
         {loadError && (
           <div role="alert" className="p-4 rounded-md bg-risk-high-bg border border-risk-high-border text-risk-high-text text-sm">
             {loadError} <Link to="/dashboard" className="font-semibold underline">Back to My Fields</Link>
