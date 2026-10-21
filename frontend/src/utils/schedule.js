@@ -52,6 +52,14 @@ export function fieldStatus({ soil, recommendation, logs }) {
   }
 }
 
+/** Short dose-only text for a field, e.g. "3 overdue", "due today", "due in 2 days". */
+export function doseText(status) {
+  if (!status || status.dueCount === 0) return null
+  if (status.overdue > 0) return `${status.overdue} overdue`
+  const days = status.due[0].days
+  return days === 0 ? 'due today' : `due in ${days} day${days === 1 ? '' : 's'}`
+}
+
 /** The one line of red-tag text for a field, most urgent first; null when nothing is pending. */
 export function pendingText(status) {
   if (!status || status.pendingCount === 0) return null
