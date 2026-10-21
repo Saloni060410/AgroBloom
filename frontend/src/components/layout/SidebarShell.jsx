@@ -1,67 +1,97 @@
-import { useState } from 'react'
-import { NavLink, useLocation } from 'react-router-dom'
-import { Menu, LayoutDashboard, Sprout, FlaskConical, CalendarDays, BarChart3 } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { Link, Outlet, useLocation } from 'react-router-dom'
+import { Menu, LayoutDashboard, Sprout, FlaskConical, CalendarDays, History } from 'lucide-react'
 import { SproutMark } from '../brand/Logo.jsx'
 import { BRAND } from '../brand/brand.js'
 import Drawer from './Drawer.jsx'
 import UserMenu from './UserMenu.jsx'
 import { useActiveField } from '../../hooks/useActiveField.js'
+import { useScheduleAlerts } from '../../hooks/useScheduleAlerts.js'
 
-function useSidebarItems() {
-  const { fieldPath } = useActiveField()
-  return [
-    { to: '/overview', label: 'Overview', icon: LayoutDashboard },
-    { to: '/dashboard', label: 'My Fields', icon: Sprout },
-    { to: fieldPath('/soil'), label: 'Soil Tests', icon: FlaskConical },
-    { to: fieldPath('/schedule'), label: 'Fertilizer Schedule', icon: CalendarDays },
-    { to: fieldPath('/history'), label: 'Reports', icon: BarChart3 },
+// My Fields also owns the pages you reach from a field card: its overview, plan and risk check.
+const FIELDS_AREA = /^\/fields\/[^/]+(\/(recommendation|risk-check))?\/?$/
+
+function useSidebarItems(pathname) {
+  const { fieldPath, plots } = useActiveField()
+  const alerts = useScheduleAlerts(plots)
+  const items = [
+    { to: '/overview', label: 'Overview', icon: LayoutDashboard, active: pathname === '/overview' },
+    { to: '/dashboard', label: 'My Fields', icon: Sprout, active: pathname === '/dashboard' || FIELDS_AREA.test(pathname) },
+    { to: fieldPath('/soil'), label: 'Soil test', icon: FlaskConical, active: pathname.endsWith('/soil') },
+    {
+      to: fieldPath('/schedule'),
+      label: 'Schedule',
+      icon: CalendarDays,
+      active: pathname.endsWith('/schedule'),
+      badge: alerts.count,
+      badgeLabel: alerts.count
+        ? `${alerts.count} dose${alerts.count === 1 ? '' : 's'} due${alerts.overdue ? `, ${alerts.overdue} overdue` : ' within 7 days'}`
+        : null,
+    },
+    { to: fieldPath('/history'), label: 'History', icon: History, active: pathname.endsWith('/history') },
   ]
+  return items
 }
 
 function NavItems({ items }) {
   return (
     <ul className="flex flex-col gap-1.5">
-      {items.map(({ to, label, icon: Icon }) => (
+      {items.map(({ to, label, icon: Icon, active, badge, badgeLabel }) => (
         <li key={label}>
-          <NavLink
+          <Link
             to={to}
-            end
-            className={({ isActive }) =>
-              `relative flex flex-col items-center gap-1.5 px-3 py-3.5 text-center text-[13px] leading-tight rounded-md transition-colors ${
-                isActive ? 'bg-white/[0.06] text-white font-semibold' : 'text-ink-sidebar/80 hover:bg-white/5 hover:text-white'
-              }`
-            }
+            aria-current={active ? 'page' : undefined}
+            className={`relative flex flex-col items-center gap-1.5 px-3 py-3.5 text-center text-[13px] leading-tight rounded-md transition-colors ${
+              active ? 'bg-white/[0.06] text-white font-semibold' : 'text-ink-sidebar/80 hover:bg-white/5 hover:text-white'
+            }`}
           >
-            {({ isActive }) => (
-              <>
-                {isActive && <span className="absolute left-0 top-2 bottom-2 w-1 rounded-r-full bg-primary-500" aria-hidden="true" />}
+            {active && <span className="absolute left-0 top-2 bottom-2 w-1 rounded-r-full bg-primary-500" aria-hidden="true" />}
+            <span
+              className={`relative w-11 h-11 rounded-lg inline-flex items-center justify-center ${
+                active ? 'bg-primary-500/25 text-[#b9d98a]' : 'bg-white/5 text-[#cfd9bd]'
+              }`}
+            >
+              <Icon className="w-6 h-6" strokeWidth={1.7} aria-hidden="true" />
+              {badge > 0 && (
                 <span
-                  className={`w-11 h-11 rounded-lg inline-flex items-center justify-center ${
-                    isActive ? 'bg-primary-500/25 text-[#b9d98a]' : 'bg-white/5 text-[#cfd9bd]'
-                  }`}
+                  className="absolute -top-1.5 -right-1.5 min-w-[1.35rem] h-[1.35rem] px-1 rounded-full bg-terracotta-500 text-white text-[11px] font-bold inline-flex items-center justify-center ring-2 ring-bg-sidebar"
+                  aria-hidden="true"
                 >
-                  <Icon className="w-6 h-6" strokeWidth={1.7} aria-hidden="true" />
+                  {badge > 9 ? '9+' : badge}
                 </span>
-                <span>{label}</span>
-              </>
-            )}
-          </NavLink>
+              )}
+            </span>
+            <span>{label}</span>
+            {badgeLabel && <span className="sr-only">{badgeLabel}</span>}
+          </Link>
         </li>
       ))}
     </ul>
   )
 }
 
-/** Dark sidebar app shell: Overview, My Fields, Soil Tests, Fertilizer Schedule, Reports. */
-export default function SidebarShell({ children }) {
-  const items = useSidebarItems()
-  const [open, setOpen] = useState(false)
+/**
+ * The one app shell for every signed-in page: dark sidebar with Overview, My Fields, Soil test,
+ * Schedule (badge when a dose is due or overdue) and History. Used as a layout route, so it stays
+ * mounted while the page inside it changes.
+ */
+export default function SidebarShell() {
   const { pathname } = useLocation()
+  const items = useSidebarItems(pathname)
+  const [open, setOpen] = useState(false)
+
   const [prevPath, setPrevPath] = useState(pathname)
   if (prevPath !== pathname) {
     setPrevPath(pathname)
     setOpen(false)
   }
+
+  // New page, start at the top (the sidebar persists, so the browser would not do it).
+  useEffect(() => {
+    window.scrollTo({ top: 0 })
+  }, [pathname])
+
+  const scheduleBadge = items.find((i) => i.label === 'Schedule')?.badge || 0
 
   return (
     <div className="min-h-screen bg-paper-warm lg:pl-[216px]">
@@ -93,11 +123,12 @@ export default function SidebarShell({ children }) {
         <button
           type="button"
           onClick={() => setOpen(true)}
-          aria-label="Open menu"
+          aria-label={scheduleBadge ? `Open menu, ${scheduleBadge} dose${scheduleBadge === 1 ? '' : 's'} due` : 'Open menu'}
           aria-expanded={open}
-          className="min-h-touch min-w-touch inline-flex items-center justify-center rounded-full hover:bg-white/10 cursor-pointer"
+          className="relative min-h-touch min-w-touch inline-flex items-center justify-center rounded-full hover:bg-white/10 cursor-pointer"
         >
           <Menu className="w-6 h-6" aria-hidden="true" />
+          {scheduleBadge > 0 && <span className="absolute top-2 right-2 w-2.5 h-2.5 rounded-full bg-terracotta-500 ring-2 ring-bg-sidebar" aria-hidden="true" />}
         </button>
       </header>
 
@@ -111,7 +142,7 @@ export default function SidebarShell({ children }) {
       </Drawer>
 
       <main id="main-content" tabIndex={-1} className="px-4 sm:px-8 lg:px-10 py-6 sm:py-8 max-w-[1240px]">
-        {children}
+        <Outlet />
       </main>
     </div>
   )
