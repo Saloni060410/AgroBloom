@@ -1,22 +1,78 @@
 import { daysFromToday } from './format.js'
 
-/**
- * A plan line counts as applied when a fertilizer log of the same product was made on or after the
- * day the plan was generated. With two lines of the same product this cannot tell them apart, and
- * marks both together.
- */
-export function lineApplied(line, recommendation, logs) {
-  if (!recommendation) return false
-  const since = new Date(new Date(recommendation.createdAt).toISOString().slice(0, 10))
-  return logs.some((l) => l.type === line.fertilizer_type && new Date(l.appliedOn) >= since)
+const HINTS_KEY = 'agrobloom.logLines'
+
+/** Stable id of a plan line: stage, product and its position in the schedule. */
+export function lineKey(line, index) {
+  return `${line.stage}-${line.fertilizer_type}-${index}`
 }
 
-/** Dated plan lines that are not applied yet and fall due within `windowDays` (overdue ones included). */
-export function dueLines(recommendation, logs, windowDays = 7) {
-  return (recommendation?.schedule || [])
-    .filter((line) => line.apply_by && !lineApplied(line, recommendation, logs))
-    .map((line) => ({ line, days: daysFromToday(line.apply_by) }))
-    .filter((x) => x.days != null && x.days <= windowDays)
+/**
+ * Which plan line each log was marked done for, remembered on this device. The backend log has no
+ * "which dose" field, so this keeps the line the farmer clicked as the line that shows as done.
+ */
+export function loadLineHints() {
+  try {
+    return JSON.parse(localStorage.getItem(HINTS_KEY) || '{}') || {}
+  } catch {
+    return {}
+  }
+}
+
+export function saveLineHint(logId, key) {
+  try {
+    const all = loadLineHints()
+    all[logId] = key
+    localStorage.setItem(HINTS_KEY, JSON.stringify(all))
+  } catch {
+    // storage unavailable: matching falls back to the date-order rule below
+  }
+}
+
+/**
+ * Pairs fertilizer logs with plan lines one to one. A log counts for a line when it is the same
+ * product and was made on or after the day the plan was generated; each log is used for at most one
+ * line, so three urea doses need three urea logs.
+ *
+ * Pass 1 honours the line a log was marked done for on this device. Pass 2 pairs the remaining logs
+ * with the remaining lines of the same product, dated lines first and the earliest date first, so
+ * a log always clears the most overdue dose. Returns an array parallel to the schedule: the matched
+ * log, or null for a line not applied yet.
+ */
+export function matchLogsToLines(recommendation, logs, hints = loadLineHints()) {
+  const lines = recommendation?.schedule || []
+  if (!lines.length) return []
+  const since = new Date(new Date(recommendation.createdAt).toISOString().slice(0, 10))
+  const pool = (logs || [])
+    .filter((l) => new Date(l.appliedOn) >= since)
+    .sort((a, b) => new Date(a.appliedOn) - new Date(b.appliedOn))
+  const result = lines.map(() => null)
+  const used = new Set()
+
+  pool.forEach((log, li) => {
+    const idx = lines.findIndex((line, i) => lineKey(line, i) === hints[log.id] && line.fertilizer_type === log.type && !result[i])
+    if (idx >= 0) {
+      result[idx] = log
+      used.add(li)
+    }
+  })
+
+  const order = lines
+    .map((line, i) => i)
+    .sort((x, y) => {
+      const ax = lines[x].apply_by || '9999-12-31'
+      const ay = lines[y].apply_by || '9999-12-31'
+      return ax === ay ? x - y : ax < ay ? -1 : 1
+    })
+  pool.forEach((log, li) => {
+    if (used.has(li)) return
+    const idx = order.find((i) => !result[i] && lines[i].fertilizer_type === log.type)
+    if (idx !== undefined) {
+      result[idx] = log
+      used.add(li)
+    }
+  })
+  return result
 }
 
 export const SCHEDULE_CHANGED_EVENT = 'agrobloom:schedule-changed'
@@ -32,9 +88,9 @@ export function notifyScheduleChanged() {
  * due within a week (or overdue), or when it has no soil test yet, so no plan can exist.
  */
 export function fieldStatus({ soil, recommendation, logs }) {
+  const matches = matchLogsToLines(recommendation, logs)
   const unapplied = (recommendation?.schedule || [])
-    .filter((line) => line.apply_by && !lineApplied(line, recommendation, logs || []))
-    .map((line) => ({ line, days: daysFromToday(line.apply_by) }))
+    .map((line, i) => ({ line, days: line.apply_by && !matches[i] ? daysFromToday(line.apply_by) : null }))
     .filter((x) => x.days != null)
     .sort((a, b) => a.days - b.days)
   const due = unapplied.filter((x) => x.days <= 7)
