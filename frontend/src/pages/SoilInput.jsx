@@ -179,7 +179,7 @@ export default function SoilInput() {
   const fertName = (id) => fertilizers.find((f) => f.id === id)?.name || titleCase(id)
 
   return (
-    <div className="pb-16 max-w-6xl">
+    <div className="pb-16">
       {/* Active field band */}
       <div className="bg-primary-600 text-white rounded-lg shadow-md">
         <div className="px-5 sm:px-8 py-6">

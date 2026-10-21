@@ -41,20 +41,20 @@ function NavItems({ items }) {
           <Link
             to={to}
             aria-current={active ? 'page' : undefined}
-            className={`relative flex flex-col items-center gap-1.5 px-3 py-3.5 text-center text-[13px] leading-tight rounded-md transition-colors ${
+            className={`relative flex flex-col items-center gap-1.5 px-3 py-3.5 text-center text-sm leading-tight rounded-md transition-colors ${
               active ? 'bg-white/[0.06] text-white font-semibold' : 'text-ink-sidebar/80 hover:bg-white/5 hover:text-white'
             }`}
           >
             {active && <span className="absolute left-0 top-2 bottom-2 w-1 rounded-r-full bg-primary-500" aria-hidden="true" />}
             <span
-              className={`relative w-11 h-11 rounded-lg inline-flex items-center justify-center ${
+              className={`relative w-14 h-14 rounded-xl inline-flex items-center justify-center ${
                 active ? 'bg-primary-500/25 text-[#b9d98a]' : 'bg-white/5 text-[#cfd9bd]'
               }`}
             >
-              <Icon className="w-6 h-6" strokeWidth={1.7} aria-hidden="true" />
+              <Icon className="w-8 h-8" strokeWidth={1.6} aria-hidden="true" />
               {badge > 0 && (
                 <span
-                  className="absolute -top-1.5 -right-1.5 min-w-[1.35rem] h-[1.35rem] px-1 rounded-full bg-terracotta-500 text-white text-[11px] font-bold inline-flex items-center justify-center ring-2 ring-bg-sidebar"
+                  className="absolute -top-2 -right-2 min-w-[1.5rem] h-[1.5rem] px-1 rounded-full bg-terracotta-500 text-white text-[11px] font-bold inline-flex items-center justify-center ring-2 ring-bg-sidebar"
                   aria-hidden="true"
                 >
                   {badge > 9 ? '9+' : badge}
@@ -94,7 +94,7 @@ export default function SidebarShell() {
   const scheduleBadge = items.find((i) => i.label === 'Schedule')?.badge || 0
 
   return (
-    <div className="min-h-screen bg-paper-warm lg:pl-[216px]">
+    <div className="min-h-screen bg-paper-warm lg:pl-[232px]">
       <a
         href="#main-content"
         className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[60] focus:px-4 focus:py-2 focus:bg-primary-700 focus:text-white focus:rounded-md"
@@ -102,7 +102,7 @@ export default function SidebarShell() {
         Skip to main content
       </a>
 
-      <aside className="hidden lg:flex fixed inset-y-0 left-0 w-[216px] flex-col bg-bg-sidebar text-ink-sidebar z-30 no-print">
+      <aside className="hidden lg:flex fixed inset-y-0 left-0 w-[232px] flex-col bg-bg-sidebar text-ink-sidebar z-30 no-print">
         <div className="flex flex-col items-center pt-7 pb-6 gap-1">
           <SproutMark size={46} />
           <span className="text-xl font-semibold text-white tracking-tight">{BRAND.name}</span>
@@ -141,7 +141,7 @@ export default function SidebarShell() {
         </div>
       </Drawer>
 
-      <main id="main-content" tabIndex={-1} className="px-4 sm:px-8 lg:px-10 py-6 sm:py-8 max-w-[1240px]">
+      <main id="main-content" tabIndex={-1} className="px-4 sm:px-8 lg:px-10 py-6 sm:py-8">
         <Outlet />
       </main>
     </div>

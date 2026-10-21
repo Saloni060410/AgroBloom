@@ -95,7 +95,7 @@ export default function Schedule() {
   const rainy = weather && weather.rainfallMmForecast >= 2
 
   return (
-    <div className="max-w-5xl space-y-8">
+    <div className="space-y-8">
       <div className="flex flex-wrap items-end justify-between gap-4 no-print">
         <div>
           <p className="text-sm font-semibold text-primary-700">{field ? `${field.name} · ${field.areaAcres ?? '?'} acres` : 'Loading field…'}</p>

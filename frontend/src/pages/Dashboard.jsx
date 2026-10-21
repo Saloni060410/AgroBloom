@@ -85,7 +85,7 @@ export default function Dashboard() {
           </div>
         )}
 
-        <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
           {loading &&
             [0, 1].map((i) => (
               <div key={i} aria-hidden="true" className="h-[520px] rounded-lg bg-white/70 border border-border-default animate-pulse" />

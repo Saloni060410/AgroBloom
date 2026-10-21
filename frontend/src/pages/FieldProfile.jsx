@@ -76,7 +76,7 @@ export default function FieldProfile() {
   }
 
   return (
-    <div className="max-w-5xl space-y-8">
+    <div className="space-y-8">
       {h.status === 'error' && (
         <div role="alert" className="p-4 rounded-md bg-risk-high-bg border border-risk-high-border text-risk-high-text text-sm flex justify-between gap-3">
           <span>{h.error}</span>

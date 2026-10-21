@@ -100,7 +100,7 @@ export default function History() {
           <h2 id="full-log" className="text-xl font-bold text-ink-primary">Everything recorded for {fieldName}</h2>
           <div className="no-print"><FilterSelect value={filter} onChange={setFilter} /></div>
         </div>
-        <div className="mt-4 max-w-3xl">
+        <div className="mt-4">
           {h.status === 'loading' ? (
             <div className="space-y-3 animate-pulse" aria-hidden="true">
               {[0, 1, 2].map((i) => <div key={i} className="h-20 bg-bg-muted rounded-lg" />)}
