@@ -2,12 +2,14 @@ import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ChevronDown } from 'lucide-react'
 import { usePlotStore } from '../../store/usePlotStore.js'
+import { useFieldStatusStore } from '../../store/useFieldStatusStore.js'
 import { titleCase } from '../../utils/format.js'
 
 /** Compact "which field am I looking at" select. suffix is the page path after /fields/:id. */
 export default function PlotSwitcher({ fieldId, suffix = '', className = '' }) {
   const navigate = useNavigate()
   const { plots, loadPlots } = usePlotStore()
+  const byField = useFieldStatusStore((s) => s.byField)
 
   useEffect(() => {
     loadPlots()
@@ -28,6 +30,7 @@ export default function PlotSwitcher({ fieldId, suffix = '', className = '' }) {
           <option key={field.id} value={field.id}>
             {field.name}
             {field.cropType ? ` (${titleCase(field.cropType)})` : ''}
+            {byField[field.id]?.pendingCount ? ` \u00b7 ${byField[field.id].pendingCount} pending` : ''}
           </option>
         ))}
       </select>

@@ -4,9 +4,10 @@ import { AlertTriangle, CheckCircle2, FlaskConical, CalendarClock, Sprout, Ruler
 import useDocumentTitle from '../hooks/useDocumentTitle.js'
 import { useUserStore } from '../store/useUserStore.js'
 import { usePlotStore } from '../store/usePlotStore.js'
-import { usePlotDetails, nextApplication } from '../hooks/usePlotDetails.js'
+import { usePlotDetails } from '../hooks/usePlotDetails.js'
+import PendingTag from '../components/farms/PendingTag.jsx'
 import { soilHealthScore, soilHealthBand } from '../utils/soilHealth.js'
-import { daysFromToday, firstName, titleCase } from '../utils/format.js'
+import { firstName, titleCase } from '../utils/format.js'
 import WeatherCard from '../components/layout/WeatherCard.jsx'
 import { BRAND } from '../components/brand/brand.js'
 
@@ -38,12 +39,12 @@ export default function Overview() {
   const totalAcres = plots.reduce((sum, p) => sum + (p.field.areaAcres || 0), 0)
   const withSoil = plots.filter((p) => details[p.field.id]?.soil)
 
-  // Build the attention list from the newest recommendation per plot.
+  // Build the attention list from each field's soil test, newest plan and unapplied doses.
   const attention = []
   for (const { field } of plots) {
     const d = details[field.id]
     if (!d) continue
-    if (!d.soil) {
+    if (d.needsSoil) {
       attention.push({ id: `${field.id}-soil`, tone: 'warn', field, text: 'No soil test yet. Enter one to get a dose.', to: `/fields/${field.id}/soil`, cta: 'Enter soil test' })
       continue
     }
@@ -51,15 +52,12 @@ export default function Overview() {
     if (rec?.risk?.level === 'HIGH' || rec?.risk?.level === 'MEDIUM') {
       attention.push({ id: `${field.id}-risk`, tone: rec.risk.level === 'HIGH' ? 'bad' : 'warn', field, text: rec.risk.reason, to: `/fields/${field.id}/recommendation`, cta: 'Open plan' })
     }
-    const next = nextApplication(rec, daysFromToday)
-    if (next && next.days < 0) {
-      attention.push({ id: `${field.id}-overdue`, tone: 'warn', field, text: `${titleCase(next.line.fertilizer_type)} was due ${Math.abs(next.days)} day${Math.abs(next.days) === 1 ? '' : 's'} ago.`, to: `/fields/${field.id}/schedule`, cta: 'Open schedule' })
+    if (d.overdue > 0) {
+      const worst = d.due[0]
+      attention.push({ id: `${field.id}-overdue`, tone: 'bad', field, text: `${titleCase(worst.line.fertilizer_type)} was due ${Math.abs(worst.days)} day${Math.abs(worst.days) === 1 ? '' : 's'} ago${d.overdue > 1 ? ` (${d.overdue} doses overdue)` : ''}.`, to: `/fields/${field.id}/schedule`, cta: 'Open schedule' })
     }
   }
-  const dueSoon = plots.filter((p) => {
-    const next = nextApplication(details[p.field.id]?.recommendation, daysFromToday)
-    return next && next.days >= 0 && next.days <= 7
-  }).length
+  const dueSoon = plots.reduce((n, p) => n + (details[p.field.id]?.due.filter((x) => x.days >= 0).length || 0), 0)
 
   const weatherField = plots.find((p) => p.field.latitude != null)?.field || plots[0]?.field
 
@@ -122,7 +120,10 @@ export default function Overview() {
                   <li key={field.id}>
                     <div className="flex items-baseline justify-between gap-3 text-sm">
                       <Link to={`/fields/${field.id}`} className="font-semibold text-ink-primary hover:underline truncate">{field.name}</Link>
-                      <span className="text-ink-secondary shrink-0">{score != null ? `${score}% · ${band.label}` : band.label}</span>
+                      <span className="text-ink-secondary shrink-0 flex items-center gap-2">
+                        <PendingTag status={details[field.id]} />
+                        {score != null ? `${score}% · ${band.label}` : band.label}
+                      </span>
                     </div>
                     <div className="mt-1.5 h-2.5 rounded-full bg-bg-muted overflow-hidden" role="img" aria-label={score != null ? `Soil health ${score} percent` : 'No soil test'}>
                       <div className="h-full rounded-full transition-all duration-slow" style={{ width: `${score ?? 0}%`, backgroundColor: band.color }} />

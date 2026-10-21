@@ -5,6 +5,7 @@ import useDocumentTitle from '../hooks/useDocumentTitle.js'
 import * as endpoints from '../services/endpoints.js'
 import { useRecommendationStore } from '../store/useRecommendationStore.js'
 import { usePlotStore } from '../store/usePlotStore.js'
+import { useFieldStatusStore } from '../store/useFieldStatusStore.js'
 import { DEFAULT_RATINGS, ratingsFromReference } from '../utils/soilHealth.js'
 import { formatDate, titleCase } from '../utils/format.js'
 import { notifyScheduleChanged } from '../utils/schedule.js'
@@ -34,6 +35,7 @@ export default function SoilInput() {
 
   const { plots, loadPlots, updateField: updatePlotInStore } = usePlotStore()
   const { generateRecommendation } = useRecommendationStore()
+  const statusByField = useFieldStatusStore((s) => s.byField)
 
   const [field, setField] = useState(null)
   const [crops, setCrops] = useState([])
@@ -201,6 +203,7 @@ export default function SoilInput() {
                   <option key={f.id} value={f.id}>
                     {f.name}
                     {f.cropType ? ` (${titleCase(f.cropType)})` : ''}
+                    {statusByField[f.id]?.pendingCount ? ` \u00b7 ${statusByField[f.id].pendingCount} pending` : ''}
                   </option>
                 ))}
                 {!plots.some((p) => p.field.id === fieldId) && <option value={fieldId}>{field?.name || 'This field'}</option>}

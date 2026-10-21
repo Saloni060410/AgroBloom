@@ -6,14 +6,14 @@ import { BRAND } from '../brand/brand.js'
 import Drawer from './Drawer.jsx'
 import UserMenu from './UserMenu.jsx'
 import { useActiveField } from '../../hooks/useActiveField.js'
-import { useScheduleAlerts } from '../../hooks/useScheduleAlerts.js'
+import { useFieldStatusSync } from '../../hooks/useFieldStatusSync.js'
 
 // My Fields also owns the pages you reach from a field card: its overview, plan and risk check.
 const FIELDS_AREA = /^\/fields\/[^/]+(\/(recommendation|risk-check))?\/?$/
 
 function useSidebarItems(pathname) {
   const { fieldPath, plots } = useActiveField()
-  const alerts = useScheduleAlerts(plots)
+  const alerts = useFieldStatusSync(plots)
   const items = [
     { to: '/overview', label: 'Overview', icon: LayoutDashboard, active: pathname === '/overview' },
     { to: '/dashboard', label: 'My Fields', icon: Sprout, active: pathname === '/dashboard' || FIELDS_AREA.test(pathname) },

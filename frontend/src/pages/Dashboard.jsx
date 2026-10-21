@@ -60,6 +60,11 @@ export default function Dashboard() {
   }
 
   const loading = status === 'idle' || status === 'loading'
+  // Fields with pending work come first (stable otherwise), so they are seen without scrolling.
+  const ordered = [...plots].sort(
+    (a, b) => Number((details[b.field.id]?.pendingCount || 0) > 0) - Number((details[a.field.id]?.pendingCount || 0) > 0),
+  )
+  const pendingFields = ordered.filter((p) => (details[p.field.id]?.pendingCount || 0) > 0).length
 
   return (
     <div className="space-y-8">
@@ -76,7 +81,14 @@ export default function Dashboard() {
       </header>
 
       <section aria-labelledby="active-farmlands">
-        <h2 id="active-farmlands" className="text-2xl font-semibold text-ink-primary mb-5">Active Farmlands</h2>
+        <div className="flex flex-wrap items-center gap-3 mb-5">
+          <h2 id="active-farmlands" className="text-2xl font-semibold text-ink-primary">Active Farmlands</h2>
+          {pendingFields > 0 && (
+            <span className="inline-flex items-center rounded-full bg-risk-high-bg text-risk-high-text border border-risk-high-border text-sm font-semibold px-3 py-1">
+              {pendingFields} of {plots.length} {pendingFields === 1 ? 'field has' : 'fields have'} pending work
+            </span>
+          )}
+        </div>
 
         {status === 'error' && (
           <div role="alert" className="mb-5 p-4 rounded-md bg-risk-high-bg border border-risk-high-border text-risk-high-text text-sm flex flex-wrap items-center justify-between gap-3">
@@ -92,7 +104,7 @@ export default function Dashboard() {
             ))}
 
           {!loading &&
-            plots.map((plot, i) => (
+            ordered.map((plot, i) => (
               <FarmCard
                 key={plot.field.id}
                 index={i}

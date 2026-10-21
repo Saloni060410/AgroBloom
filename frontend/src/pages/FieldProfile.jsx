@@ -3,11 +3,12 @@ import { useParams, Link } from 'react-router-dom'
 import { ArrowRight, FlaskConical, CalendarDays, Sparkles, ShieldCheck, MapPin, Droplets, Loader2, Check } from 'lucide-react'
 import useDocumentTitle from '../hooks/useDocumentTitle.js'
 import { useFieldHistory } from '../hooks/useFieldHistory.js'
-import { nextApplication } from '../hooks/usePlotDetails.js'
+import { fieldStatus } from '../utils/schedule.js'
+import PendingTag from '../components/farms/PendingTag.jsx'
 import { usePlotStore } from '../store/usePlotStore.js'
 import * as endpoints from '../services/endpoints.js'
 import { soilHealthScore, soilHealthBand, npkSummary } from '../utils/soilHealth.js'
-import { formatDate, titleCase, daysFromToday, capitalize, roundQty } from '../utils/format.js'
+import { formatDate, titleCase, capitalize, roundQty } from '../utils/format.js'
 import FieldScene from '../components/illustrations/FieldScene.jsx'
 import { RingGauge } from '../components/ui/Gauges.jsx'
 import PlotSwitcher from '../components/layout/PlotSwitcher.jsx'
@@ -58,7 +59,8 @@ export default function FieldProfile() {
   const score = soilHealthScore(soil, h.ratings)
   const band = soilHealthBand(score)
   const npk = npkSummary(soil, h.ratings)
-  const next = nextApplication(rec, daysFromToday)
+  const status = fieldStatus({ soil, recommendation: rec, logs: h.logs })
+  const next = status.next
 
   const saveStage = async () => {
     setSaving(true)
@@ -88,7 +90,10 @@ export default function FieldProfile() {
         <FieldScene crop={field?.cropType || 'wheat'} seed={11} className="w-full h-40 sm:h-52 block" />
         <div className="p-5 sm:p-7 flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-ink-primary leading-tight">{field?.name || 'Loading…'}</h1>
+            <div className="flex flex-wrap items-center gap-3">
+              <h1 className="text-3xl font-bold text-ink-primary leading-tight">{field?.name || 'Loading…'}</h1>
+              {h.status === 'ready' && <PendingTag status={status} />}
+            </div>
             <p className="mt-1 text-ink-secondary">
               {[
                 h.cropName(field?.cropType),

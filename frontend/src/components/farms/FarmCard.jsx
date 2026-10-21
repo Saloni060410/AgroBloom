@@ -3,8 +3,8 @@ import { Droplets, Sprout, FlaskConical, ArrowRight, Trash2, CalendarClock } fro
 import FieldScene from '../illustrations/FieldScene.jsx'
 import { RingGauge } from '../ui/Gauges.jsx'
 import { soilHealthScore, soilHealthBand, npkSummary } from '../../utils/soilHealth.js'
-import { formatDate, titleCase, daysFromToday } from '../../utils/format.js'
-import { nextApplication } from '../../hooks/usePlotDetails.js'
+import { formatDate, titleCase } from '../../utils/format.js'
+import PendingTag from './PendingTag.jsx'
 
 function dueText(days) {
   if (days == null) return ''
@@ -20,14 +20,18 @@ export default function FarmCard({ plot, cropName, detail, ratings, onRemove, in
   const score = soilHealthScore(soil, ratings)
   const band = soilHealthBand(score)
   const npk = npkSummary(soil, ratings)
-  const next = nextApplication(detail?.recommendation, daysFromToday)
+  const next = detail?.next || null
+  const pending = (detail?.pendingCount || 0) > 0
   const crop = field.cropType || 'wheat'
 
   return (
-    <article className="bg-white rounded-lg border border-border-default shadow-md p-3 flex flex-col animate-reveal" style={{ animationDelay: `${index * 70}ms` }}>
-      <Link to={`/fields/${field.id}`} className="block rounded-md overflow-hidden" aria-label={`Open ${field.name}`}>
-        <FieldScene crop={crop} seed={index + 3} className="w-full h-40 sm:h-44 block" />
-      </Link>
+    <article className={`bg-white rounded-lg border shadow-md p-3 flex flex-col animate-reveal ${pending ? 'border-risk-high-text ring-1 ring-risk-high-border' : 'border-border-default'}`} style={{ animationDelay: `${index * 70}ms` }}>
+      <div className="relative">
+        <Link to={`/fields/${field.id}`} className="block rounded-md overflow-hidden" aria-label={`Open ${field.name}`}>
+          <FieldScene crop={crop} seed={index + 3} className="w-full h-40 sm:h-44 block" />
+        </Link>
+        <PendingTag status={detail} className="absolute top-3 left-3" />
+      </div>
 
       <div className="px-2 pt-4 flex-1">
         <h2 className="text-xl font-semibold text-ink-primary leading-snug">
@@ -88,7 +92,11 @@ export default function FarmCard({ plot, cropName, detail, ratings, onRemove, in
             {(next.line.quantity_kg_per_acre ?? 0).toFixed(1)} kg/acre {titleCase(next.line.fertilizer_type)}
           </span>
         ) : detail?.recommendation ? (
-          <span>No dated application in the current plan</span>
+          <span>
+            {(detail.recommendation.schedule || []).some((l) => l.apply_by)
+              ? 'Every dated dose in the plan is logged as applied'
+              : 'No dated application in the current plan'}
+          </span>
         ) : (
           <span>No plan yet. Enter a soil test to get one.</span>
         )}
