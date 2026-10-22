@@ -36,6 +36,42 @@ async function fetchLiveWeather({ latitude, longitude }) {
   }
 }
 
+const RAIN_HISTORY_DAYS = 60
+const RAIN_FRESH_MS = 6 * 60 * 60_000 // observed rain for past days barely changes within a day
+const rainCache = new Map() // fieldId -> { data, fetchedAt }
+
+// Rain that actually fell on the field over the past `days` days, as [{ date, mm }].
+// Best effort: any failure returns [] (or the last good copy) so a recommendation never
+// hard-fails on it. The engine then simply skips its rain adjustments.
+export async function getRainfallHistory({ id, latitude, longitude }, days = RAIN_HISTORY_DAYS) {
+  if (latitude == null || longitude == null) return []
+
+  const entry = rainCache.get(id)
+  const now = Date.now()
+  if (entry && now - entry.fetchedAt < RAIN_FRESH_MS) return entry.data
+
+  try {
+    const { data } = await client.get('/forecast', {
+      params: {
+        latitude,
+        longitude,
+        daily: 'precipitation_sum',
+        past_days: days,
+        forecast_days: 1,
+        timezone: 'auto',
+      },
+    })
+    const today = new Date().toISOString().slice(0, 10)
+    const history = data.daily.time
+      .map((date, i) => ({ date, mm: data.daily.precipitation_sum[i] }))
+      .filter((day) => day.mm != null && day.date < today)
+    rainCache.set(id, { data: history, fetchedAt: now })
+    return history
+  } catch {
+    return entry ? entry.data : []
+  }
+}
+
 // Single source of truth for weather — used by GET /fields/:id/weather AND by
 // the recommendation payload assembly.
 export async function getWeatherForField({ id, latitude, longitude }) {

@@ -1,12 +1,13 @@
 import { isDeepStrictEqual } from 'node:util'
 import { z } from 'zod'
 import { prisma } from '../config/db.js'
-import { getWeatherForField } from '../services/weatherService.js'
+import { getWeatherForField, getRainfallHistory } from '../services/weatherService.js'
 import { recommend, MlPayloadError } from '../services/mlService.js'
 import { parsePagination, paginatedResponse } from '../utils/pagination.js'
 
 const RISK_LEVEL_MAP = { low: 'LOW', medium: 'MEDIUM', high: 'HIGH' }
 const IDEMPOTENCY_WINDOW_MS = 30_000
+const PREVIOUS_SOIL_TESTS = 5
 const isoDate = (date) => date.toISOString().slice(0, 10)
 
 export const createRecommendationSchema = z
@@ -82,7 +83,15 @@ export async function createRecommendation(req, res, next) {
       orderBy: { appliedOn: 'asc' },
     })
 
+    // Earlier tests (never the one being used) let the engine flag sudden jumps and trends.
+    const previousSoilTests = await prisma.soilTest.findMany({
+      where: { fieldId: field.id, testedOn: { lt: soilTest.testedOn } },
+      orderBy: { testedOn: 'desc' },
+      take: PREVIOUS_SOIL_TESTS,
+    })
+
     const weather = await getWeatherForField({ id: field.id, latitude: field.latitude, longitude: field.longitude })
+    const rainfallHistory = await getRainfallHistory({ id: field.id, latitude: field.latitude, longitude: field.longitude })
 
     const payload = {
       field_id: field.id,
@@ -110,6 +119,17 @@ export async function createRecommendation(req, res, next) {
         quantity_kg_per_acre: log.quantityKgPerAcre,
         applied_on: isoDate(log.appliedOn),
       })),
+      soil_tested_on: isoDate(soilTest.testedOn),
+      previous_soil_tests: previousSoilTests.map((test) => ({
+        tested_on: isoDate(test.testedOn),
+        n: test.n,
+        p: test.p,
+        k: test.k,
+        ph: test.ph,
+        organic_carbon: test.organicCarbon,
+        moisture: test.moisture,
+      })),
+      rainfall_history: rainfallHistory,
     }
 
     const recent = await prisma.recommendation.findFirst({

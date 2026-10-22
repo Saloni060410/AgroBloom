@@ -62,6 +62,13 @@ const recommendResponseSchema = z.object({
     nutrient_balance: z.object({ n: nutrientSchema, p: nutrientSchema, k: nutrientSchema }),
     formula: z.string(),
     data_notes: z.array(z.string()),
+    history_insights: z.array(z.object({
+      kind: z.string(),
+      severity: z.enum(['warning', 'watch', 'good']),
+      nutrient: z.string().nullable().optional(),
+      text: z.string(),
+    })).optional(),
+    stage_used: z.string().nullable().optional(),
   }),
   cost: z.object({
     estimated_cost_inr_per_acre: z.number(),
