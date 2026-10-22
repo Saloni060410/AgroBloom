@@ -7,8 +7,8 @@ import { useUserStore } from '../../store/useUserStore.js'
 import { useActiveField } from '../../hooks/useActiveField.js'
 import { firstName } from '../../utils/format.js'
 
-/** Top bar for the public pages (landing, 404): logo, three app links, Sign In / Dashboard. */
-export default function SiteNav() {
+/** Top bar for the public pages (landing, 404): logo, app links, Sign In / Dashboard. `minimal` keeps only the logo. */
+export default function SiteNav({ minimal = false }) {
   const [open, setOpen] = useState(false)
   const { pathname } = useLocation()
   const { fieldPath } = useActiveField()
@@ -57,11 +57,12 @@ export default function SiteNav() {
       >
         Skip to main content
       </a>
-      <div className="max-w-6xl mx-auto px-5 sm:px-8 h-20 flex items-center justify-between gap-6">
+      <div className={`${minimal ? '' : 'max-w-6xl mx-auto '}px-5 sm:px-8 ${minimal ? 'lg:px-16 ' : ''}h-20 flex items-center justify-between gap-6`}>
         <Link to="/" aria-label="Home" className="shrink-0">
           <Logo size={40} />
         </Link>
 
+        {!minimal && (
         <nav aria-label="Main" className="hidden lg:flex items-center gap-7">
           {links.map((l) => (
             <NavLink key={l.label} to={l.to} className={linkClass}>
@@ -70,16 +71,19 @@ export default function SiteNav() {
           ))}
           {cta}
         </nav>
+        )}
 
-        <button
-          type="button"
-          onClick={() => setOpen(true)}
-          aria-label="Open menu"
-          aria-expanded={open}
-          className="lg:hidden min-h-touch min-w-touch inline-flex items-center justify-center rounded-full hover:bg-black/5 cursor-pointer"
-        >
-          <Menu className="w-6 h-6" aria-hidden="true" />
-        </button>
+        {!minimal && (
+          <button
+            type="button"
+            onClick={() => setOpen(true)}
+            aria-label="Open menu"
+            aria-expanded={open}
+            className="lg:hidden min-h-touch min-w-touch inline-flex items-center justify-center rounded-full hover:bg-black/5 cursor-pointer"
+          >
+            <Menu className="w-6 h-6" aria-hidden="true" />
+          </button>
+        )}
       </div>
 
       <Drawer open={open} onClose={() => setOpen(false)} title="Menu">
