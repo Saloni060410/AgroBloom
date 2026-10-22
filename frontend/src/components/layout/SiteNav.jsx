@@ -57,7 +57,7 @@ export default function SiteNav({ minimal = false }) {
       >
         Skip to main content
       </a>
-      <div className="max-w-6xl mx-auto px-5 sm:px-8 h-20 flex items-center justify-between gap-6">
+      <div className="w-full px-5 sm:px-8 lg:px-12 xl:px-16 h-20 flex items-center justify-between gap-6">
         <Link to="/" aria-label="Home" className="shrink-0">
           <Logo size={40} />
         </Link>

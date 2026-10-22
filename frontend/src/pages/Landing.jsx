@@ -115,10 +115,10 @@ export default function Landing() {
       <main id="main-content" tabIndex={-1} ref={mainRef}>
         {/* Hero */}
         <section className="relative bg-paper-warm">
-          <div className="max-w-6xl mx-auto px-5 sm:px-8 pt-28 pb-24 lg:pt-32 lg:pb-40 grid lg:grid-cols-[1.05fr_1fr] gap-8 lg:gap-2 items-center">
+          <div className="w-full px-5 sm:px-8 lg:px-12 xl:px-16 pt-28 pb-24 lg:pt-32 lg:pb-40 grid lg:grid-cols-[1.05fr_1fr] gap-8 lg:gap-2 items-center">
             <div className={`${revealed ? 'animate-reveal' : 'opacity-0'} relative z-10 lg:pr-4`}>
               <h1 className="font-bold tracking-tight text-ink-primary">
-                <span className="block text-[2.2rem] sm:text-5xl lg:text-[3.1rem] leading-[1.08] text-balance">Smart Soil, Optimal Harvest</span>
+                <span className="block text-[2.2rem] sm:text-5xl lg:text-[3.1rem] xl:text-[3.6rem] 2xl:text-[4.25rem] leading-[1.08] text-balance">Smart Soil, Optimal Harvest</span>
                 <span className="mt-4 block max-w-md text-lg sm:text-xl font-medium leading-snug text-ink-secondary text-balance">
                   AI-Powered Fertilizer Planning for Sustainable Yields
                 </span>
@@ -158,7 +158,7 @@ export default function Landing() {
               )}
             </div>
 
-            <div className={`${revealed ? 'animate-reveal delay-2' : 'opacity-0'} relative mx-auto w-full max-w-[600px] lg:max-w-none lg:-mr-10`}>
+            <div className={`${revealed ? 'animate-reveal delay-2' : 'opacity-0'} relative mx-auto w-full max-w-[600px] lg:max-w-[900px] lg:mr-0 lg:ml-auto`}>
               <TractorScene className="w-full h-auto" />
 
               {/* Stat cards. Figures come from this project's own evaluation report, not from marketing.
@@ -194,8 +194,8 @@ export default function Landing() {
         </section>
 
         {/* How it works */}
-        <section id="how-it-works" className="relative -mt-16 lg:-mt-36 px-5 sm:px-8 scroll-mt-6">
-          <div className="max-w-6xl mx-auto bg-white rounded-xl shadow-lg p-7 sm:p-10">
+        <section id="how-it-works" className="relative -mt-16 lg:-mt-36 px-5 sm:px-8 lg:px-12 xl:px-16 scroll-mt-6">
+          <div className="w-full bg-white rounded-xl shadow-lg p-7 sm:p-10 xl:p-12">
             <div className="max-w-2xl">
               <h2 className="text-2xl sm:text-3xl font-semibold text-ink-primary">How {BRAND.name} works</h2>
               <p className="mt-2 text-ink-secondary">
@@ -220,7 +220,7 @@ export default function Landing() {
         </section>
 
         {/* The formula */}
-        <section className="max-w-6xl mx-auto px-5 sm:px-8 pt-20">
+        <section className="w-full px-5 sm:px-8 lg:px-12 xl:px-16 pt-20">
           <div className="max-w-2xl">
             <p className="text-sm font-semibold text-primary-700">The method</p>
             <h2 className="text-2xl sm:text-4xl font-semibold text-ink-primary mt-1">Three terms, all on screen</h2>
@@ -278,7 +278,7 @@ export default function Landing() {
         </section>
 
         {/* Coverage */}
-        <section className="max-w-6xl mx-auto px-5 sm:px-8 pt-20 pb-24">
+        <section className="w-full px-5 sm:px-8 lg:px-12 xl:px-16 pt-20 pb-24">
           <div className="max-w-2xl">
             <p className="text-sm font-semibold text-primary-700">Coverage</p>
             <h2 className="text-2xl sm:text-4xl font-semibold text-ink-primary mt-1">Seven Punjab field crops</h2>

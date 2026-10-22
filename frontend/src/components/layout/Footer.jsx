@@ -7,7 +7,7 @@ export default function Footer({ dark = false, className = '' }) {
   const tone = dark ? 'text-white/70' : 'text-ink-muted'
   return (
     <footer className={`no-print border-t ${dark ? 'border-white/15' : 'border-border-default bg-bg-subtle/60'} ${className}`}>
-      <div className="max-w-6xl mx-auto px-5 sm:px-8 py-10 grid gap-8 md:grid-cols-[1.4fr_1fr_1fr]">
+      <div className="w-full px-5 sm:px-8 lg:px-12 xl:px-16 py-10 grid gap-8 md:grid-cols-[1.4fr_1fr_1fr]">
         <div className="space-y-3">
           <Logo size={34} variant={dark ? 'light' : 'dark'} />
           <p className={`text-sm leading-relaxed max-w-md ${tone}`}>
