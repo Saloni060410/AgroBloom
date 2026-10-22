@@ -1,21 +1,16 @@
 import { useState } from 'react'
 import { useNavigate, useLocation, Link } from 'react-router-dom'
-import { AlertCircle, Eye, EyeOff, Mail, Lock, User, Sprout, Briefcase } from 'lucide-react'
+import { AlertCircle, Eye, EyeOff, Mail, Lock, User } from 'lucide-react'
 import AuthLayout from '../../components/layout/AuthLayout.jsx'
 import { useUserStore } from '../../store/useUserStore.js'
 import AuthTabs from '../../components/layout/AuthTabs.jsx'
 import { BRAND } from '../../components/brand/brand.js'
 
-const ROLES = [
-  { id: 'FARMER', label: 'Farmer', hint: 'I manage my own fields', icon: Sprout },
-  { id: 'AGRONOMIST', label: 'Agronomist', hint: 'I advise farmers', icon: Briefcase },
-]
-
 const inputClass =
   'w-full min-h-[48px] pl-11 pr-3 rounded-md border-2 border-border-default hover:border-border-strong focus:border-primary-600 bg-white text-ink-primary placeholder:text-ink-muted focus:outline-none'
 
 export default function Register() {
-  const [formData, setFormData] = useState({ name: '', email: '', password: '', role: 'FARMER' })
+  const [formData, setFormData] = useState({ name: '', email: '', password: '' })
   const [fieldErrors, setFieldErrors] = useState({})
   const [apiError, setApiError] = useState(null)
   const [showPassword, setShowPassword] = useState(false)
@@ -53,7 +48,7 @@ export default function Register() {
         name: formData.name.trim(),
         email: formData.email.trim(),
         password: formData.password,
-        role: formData.role,
+        role: 'FARMER',
       })
       navigate(location.state?.from?.pathname || '/overview', { replace: true })
     } catch (err) {
@@ -113,31 +108,6 @@ export default function Register() {
             <span>{apiError}</span>
           </div>
         )}
-
-        <fieldset>
-          <legend className="text-[15px] font-semibold text-ink-primary mb-1.5">I am a</legend>
-          <div className="grid grid-cols-2 gap-3" role="radiogroup">
-            {ROLES.map(({ id, label, hint, icon: Icon }) => {
-              const selected = formData.role === id
-              return (
-                <button
-                  key={id}
-                  type="button"
-                  role="radio"
-                  aria-checked={selected}
-                  onClick={() => setFormData((p) => ({ ...p, role: id }))}
-                  className={`text-left p-3 rounded-md border-2 transition-colors cursor-pointer ${
-                    selected ? 'border-primary-600 bg-primary-50' : 'border-border-default hover:border-border-strong'
-                  }`}
-                >
-                  <Icon className={`w-5 h-5 ${selected ? 'text-primary-600' : 'text-ink-muted'}`} aria-hidden="true" />
-                  <div className="mt-1 text-sm font-semibold text-ink-primary">{label}</div>
-                  <div className="text-xs text-ink-muted leading-snug">{hint}</div>
-                </button>
-              )
-            })}
-          </div>
-        </fieldset>
 
         {field('reg-name', 'Full name', User, { name: 'name', type: 'text', autoComplete: 'name', placeholder: 'Ramesh Patel' }, fieldErrors.name)}
         {field('reg-email', 'Email address', Mail, { name: 'email', type: 'email', autoComplete: 'email', placeholder: 'you@example.com' }, fieldErrors.email)}
