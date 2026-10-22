@@ -160,16 +160,27 @@ export default function PlotPicker({
           aria-label={label}
           className={`absolute left-0 z-40 mt-2 w-max min-w-full max-w-[min(26rem,calc(100vw-2rem))] max-h-[22rem] overflow-y-auto rounded-lg border border-border-default bg-white p-1.5 shadow-lg ${panelClassName}`}
         >
-          {groups.map((g) =>
+          {groups.map((g, gi) =>
             g.fields.length > 1 ? (
-              <li key={g.farm.id} role="presentation" className="pt-1.5 first:pt-0">
-                <div className="px-3 pt-1 pb-1 text-[11px] font-semibold uppercase tracking-wider text-ink-muted">{g.farm.name}</div>
-                <ul role="group" aria-label={g.farm.name}>
+              <li key={g.farm.id} role="presentation" className={gi > 0 ? 'mt-1 pt-1 border-t border-border-subtle' : ''}>
+                {/* The farm, in the same type size as every other entry, with its crops beneath. */}
+                <div className="flex items-center gap-2 px-3 pt-2 pb-1">
+                  <span className="w-4 shrink-0" aria-hidden="true" />
+                  <span className="min-w-0">
+                    <span className="block text-sm font-semibold text-ink-primary truncate">{g.farm.name}</span>
+                    <span className="block text-xs text-ink-muted">{g.fields.length} crops</span>
+                  </span>
+                </div>
+                <ul role="group" aria-label={g.farm.name} className="ml-5 mb-1 border-l-2 border-border-default pl-1">
                   {g.fields.map((field) => row(options.find((o) => o.field.id === field.id), cropOf(field) || field.name, null))}
                 </ul>
               </li>
             ) : (
-              row(options.find((o) => o.field.id === g.fields[0].id), g.fields[0].name, cropOf(g.fields[0]))
+              <li key={g.farm.id} role="presentation" className={gi > 0 ? 'mt-1 pt-1 border-t border-border-subtle' : ''}>
+                <ul role="group" aria-label={g.farm.name}>
+                  {row(options.find((o) => o.field.id === g.fields[0].id), g.fields[0].name, cropOf(g.fields[0]))}
+                </ul>
+              </li>
             ),
           )}
         </ul>
