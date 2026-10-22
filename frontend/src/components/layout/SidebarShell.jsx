@@ -34,7 +34,7 @@ function useSidebarItems(pathname) {
       to: pendingFields[0] ? `/fields/${pendingFields[0].id}/schedule` : fieldPath('/schedule'),
       label: 'Schedule',
       icon: CalendarDays,
-      active: pathname.endsWith('/schedule'),
+      active: pathname.endsWith('/schedule') || pathname === '/schedule/all',
       badge: alerts.count,
       badgeLabel: alerts.count
         ? `${alerts.count} dose${alerts.count === 1 ? '' : 's'} due${alerts.overdue ? `, ${alerts.overdue} overdue` : ' within 7 days'}`

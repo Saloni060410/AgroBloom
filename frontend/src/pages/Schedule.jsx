@@ -186,8 +186,11 @@ export default function Schedule() {
         <div className="flex flex-wrap items-center gap-3">
           <PlotSwitcher fieldId={fieldId} suffix="/schedule" />
           <button type="button" onClick={() => window.print()} className="inline-flex items-center gap-2 min-h-[46px] px-5 rounded-full border-2 border-primary-600 text-primary-700 hover:bg-primary-50 font-medium text-sm cursor-pointer transition-colors">
-            <Printer className="w-4 h-4" aria-hidden="true" /> Print retailer slip
+            <Printer className="w-4 h-4" aria-hidden="true" /> Print this field
           </button>
+          <Link to="/schedule/all?print=1" className="inline-flex items-center gap-2 min-h-[46px] px-5 rounded-full bg-primary-600 hover:bg-primary-700 text-white font-medium text-sm shadow-sm transition-colors">
+            <Printer className="w-4 h-4" aria-hidden="true" /> Print all fields
+          </Link>
         </div>
       </div>
 

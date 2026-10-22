@@ -35,7 +35,7 @@ export default function Modal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-ink-primary/60 backdrop-blur-sm transition-opacity duration-normal"
+      className="no-print fixed inset-0 z-50 flex items-center justify-center p-4 bg-ink-primary/60 backdrop-blur-sm transition-opacity duration-normal"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose?.()
       }}

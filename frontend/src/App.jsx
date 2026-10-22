@@ -18,6 +18,7 @@ const SoilInput = lazy(() => import('./pages/SoilInput.jsx'))
 const Recommendation = lazy(() => import('./pages/Recommendation.jsx'))
 const Schedule = lazy(() => import('./pages/Schedule.jsx'))
 const History = lazy(() => import('./pages/History.jsx'))
+const ScheduleAll = lazy(() => import('./pages/ScheduleAll.jsx'))
 const RiskCheck = lazy(() => import('./pages/RiskCheck.jsx'))
 const NotFound = lazy(() => import('./pages/NotFound.jsx'))
 const ServerError = lazy(() => import('./pages/ServerError.jsx'))
@@ -65,6 +66,7 @@ export default function App() {
             <Route path="/fields/:fieldId" element={<FieldProfile />} />
             <Route path="/fields/:fieldId/soil" element={<SoilInput />} />
             <Route path="/fields/:fieldId/recommendation" element={<Recommendation />} />
+            <Route path="/schedule/all" element={<ScheduleAll />} />
             <Route path="/fields/:fieldId/schedule" element={<Schedule />} />
             <Route path="/fields/:fieldId/risk-check" element={<RiskCheck />} />
             <Route path="/fields/:fieldId/history" element={<History />} />

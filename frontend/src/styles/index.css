@@ -230,6 +230,13 @@
   .no-print {
     display: none !important;
   }
+  .bg-paper-warm,
+  .bg-paper-warm * {
+    background-image: none;
+  }
+  .bg-paper-warm {
+    background-color: #fff !important;
+  }
   .print-only {
     display: block !important;
   }
