@@ -1,10 +1,10 @@
-# AGENTS.md — KhetGPT
+# AGENTS.md — AgroBloom (formerly KhetGPT)
 
 Canonical context for any AI coding agent (Claude Code, Antigravity/Gemini CLI, Codex, Cursor, etc.) working in this repo. `CLAUDE.md` and `GEMINI.md` at the root just point here. This file is the one to keep up to date.
 
 ## What this project is
 
-KhetGPT is a data-driven fertilizer optimization app (PSAI01: Sustainable Fertilizer Usage Optimizer). It recommends fertilizer type, quantity and a dated application schedule from soil health, crop type, growth stage, previous fertilizer usage and local weather. It flags the risk of over- and under-application and explains the impact on soil health and yield. Full requirements: `docs/PRD.md`. Prioritised features: `docs/FEATURES.md`.
+AgroBloom (the product name; some internal identifiers, such as the `khetgpt` database, still carry the old name KhetGPT) is a data-driven fertilizer optimization app (PSAI01: Sustainable Fertilizer Usage Optimizer). It recommends fertilizer type, quantity and a dated application schedule from soil health, crop type, growth stage, previous fertilizer usage and local weather. It flags the risk of over- and under-application and explains the impact on soil health and yield. Full requirements: `docs/PRD.md`. Prioritised features: `docs/FEATURES.md`.
 
 ## Repo layout (see docs/ARCHITECTURE.md for the full tree)
 
@@ -24,7 +24,7 @@ Each of `frontend/`, `backend/`, `ml/` has its own `AGENTS.md`. An agent working
 - ML endpoints: `POST /recommend`, `POST /risk-score`, `GET /health`, `GET /reference/*`.
 - Weather and geocoding come from Open-Meteo (no key). Live, then cached, then a seasonal-average fallback.
 - Crop variety is optional and only exists if Richa's chosen data has varieties.
-- No cloud deployment. The demo runs locally with docker-compose.
+- The demo runs locally with docker-compose. A hosted deployment is optional and documented in `docs/DEPLOYMENT.md` (with a `render.yaml` blueprint); it does not change how the services are built.
 
 ## Cross-cutting rules
 
