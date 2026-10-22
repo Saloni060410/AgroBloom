@@ -1,4 +1,5 @@
 import { daysFromToday } from './format.js'
+import { soilTestState } from './soilTestStatus.js'
 
 const HINTS_KEY = 'agrobloom.logLines'
 
@@ -85,16 +86,17 @@ export function notifyScheduleChanged() {
 /**
  * Everything the app needs to say about one field's pending work, from its newest soil test,
  * newest plan and fertilizer logs. A field has pending work when a dated, unapplied plan line is
- * due within a week (or overdue), or when it has no soil test yet, so no plan can exist.
+ * due within a week (or overdue), or when its soil test is missing or out of date (see soilTestStatus).
  */
-export function fieldStatus({ soil, recommendation, logs }) {
+export function fieldStatus({ field, soil, recommendation, logs, soilKnown = true }) {
   const matches = matchLogsToLines(recommendation, logs)
   const unapplied = (recommendation?.schedule || [])
     .map((line, i) => ({ line, days: line.apply_by && !matches[i] ? daysFromToday(line.apply_by) : null }))
     .filter((x) => x.days != null)
     .sort((a, b) => a.days - b.days)
   const due = unapplied.filter((x) => x.days <= 7)
-  const needsSoil = !soil
+  const soilState = soilTestState(field, soil, new Date(), soilKnown)
+  const needsSoil = soilState.state === 'missing' || soilState.state === 'stale'
   return {
     soil: soil || null,
     recommendation: recommendation || null,
@@ -104,6 +106,7 @@ export function fieldStatus({ soil, recommendation, logs }) {
     dueCount: due.length,
     overdue: due.filter((x) => x.days < 0).length,
     needsSoil,
+    soilState,
     pendingCount: due.length + (needsSoil ? 1 : 0),
   }
 }
@@ -124,5 +127,5 @@ export function pendingText(status) {
     const days = status.due[0].days
     return days === 0 ? 'Dose due today' : `Dose due in ${days} day${days === 1 ? '' : 's'}`
   }
-  return 'Soil test needed'
+  return status.soilState?.state === 'stale' ? 'Soil retest needed' : 'Soil test needed'
 }

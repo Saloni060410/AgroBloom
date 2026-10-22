@@ -9,6 +9,7 @@ import { useActiveField } from '../../hooks/useActiveField.js'
 import { useFieldStatusSync } from '../../hooks/useFieldStatusSync.js'
 import { useFieldStatusStore } from '../../store/useFieldStatusStore.js'
 import { doseText } from '../../utils/schedule.js'
+import SoilTestPrompt from '../soil/SoilTestPrompt.jsx'
 
 // My Fields also owns the pages you reach from a field card: its overview, plan and risk check.
 const FIELDS_AREA = /^\/fields\/[^/]+(\/(recommendation|risk-check))?\/?$/
@@ -192,6 +193,8 @@ export default function SidebarShell() {
           <UserMenu dark />
         </div>
       </Drawer>
+
+      <SoilTestPrompt />
 
       <main id="main-content" tabIndex={-1} className="px-4 sm:px-8 lg:px-10 py-6 sm:py-8">
         <Outlet />

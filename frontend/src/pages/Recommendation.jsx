@@ -1,8 +1,10 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { Download, Check, FlaskConical, ChevronDown, Wallet, ShieldAlert } from 'lucide-react'
 import useDocumentTitle from '../hooks/useDocumentTitle.js'
 import { useFieldHistory } from '../hooks/useFieldHistory.js'
+import { useFieldStatusStore } from '../store/useFieldStatusStore.js'
+import { useSoilPromptStore } from '../store/useSoilPromptStore.js'
 import { buildHistoryEvents } from '../utils/historyEvents.js'
 import { capitalize } from '../utils/format.js'
 import DoseTimeline from '../components/reco/DoseTimeline.jsx'
@@ -27,6 +29,18 @@ export default function Recommendation() {
   const [filter, setFilter] = useState('all')
   const [showWhy, setShowWhy] = useState(false)
 
+  // A field whose soil test is missing or out of date gets the retest popup when you open its plan.
+  const soilState = useFieldStatusStore((s) => s.byField[fieldId]?.soilState)
+  const showSoilPrompt = useSoilPromptStore((s) => s.show)
+  const needsTest = soilState?.state === 'missing' || soilState?.state === 'stale'
+  const prompted = useRef(new Set())
+  useEffect(() => {
+    if (needsTest && !prompted.current.has(fieldId)) {
+      prompted.current.add(fieldId)
+      showSoilPrompt([fieldId])
+    }
+  }, [fieldId, needsTest, showSoilPrompt])
+
   const rec = h.recommendations[0] || null
   const fertilizerMeta = useMemo(() => Object.fromEntries(h.fertilizers.map((f) => [f.id, f])), [h.fertilizers])
   const events = useMemo(
@@ -43,9 +57,18 @@ export default function Recommendation() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3 no-print">
         <h1 className="text-2xl sm:text-[2rem] font-bold text-primary-900 leading-tight">Fertilizer Recommendation &amp; Field History</h1>
-        <PlotSwitcher fieldId={fieldId} suffix="/recommendation" />
+        <PlotSwitcher fieldId={fieldId} suffix="/recommendation" onlyTested />
       </div>
       <div className="print-only text-lg font-semibold">{BRAND.name} &middot; {fieldName} &middot; Fertilizer summary</div>
+
+      {needsTest && (
+        <div role="status" className="no-print rounded-lg border border-risk-med-border bg-risk-med-bg text-risk-med-text px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+          <p className="text-sm font-medium">{soilState.state === 'missing' ? 'This field has no soil test.' : 'This plan is built on an outdated soil test.'} {soilState.reason}</p>
+          <Link to={`/fields/${fieldId}/soil`} className="inline-flex items-center min-h-[44px] px-5 rounded-full bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium">
+            {soilState.state === 'missing' ? 'Take soil test' : 'Retest soil'}
+          </Link>
+        </div>
+      )}
 
       {h.status === 'error' && (
         <div role="alert" className="p-4 rounded-md bg-risk-high-bg border border-risk-high-border text-risk-high-text text-sm flex flex-wrap items-center justify-between gap-3">

@@ -59,7 +59,7 @@ export default function FieldProfile() {
   const score = soilHealthScore(soil, h.ratings)
   const band = soilHealthBand(score)
   const npk = npkSummary(soil, h.ratings)
-  const status = fieldStatus({ soil, recommendation: rec, logs: h.logs })
+  const status = fieldStatus({ field, soil, recommendation: rec, logs: h.logs })
   const next = status.next
 
   const saveStage = async () => {
