@@ -48,7 +48,7 @@ export default function Login() {
     setApiError(null)
     try {
       await login({ email: formData.email.trim(), password: formData.password })
-      navigate(location.state?.from?.pathname || '/dashboard', { replace: true })
+      navigate(location.state?.from?.pathname || '/overview', { replace: true })
     } catch (err) {
       setApiError(err.message || 'Invalid email or password.')
     } finally {

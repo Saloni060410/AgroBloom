@@ -25,17 +25,21 @@ export default function FarmCard({ plot, cropName, detail, ratings, onRemove, in
   const crop = field.cropType || 'wheat'
 
   return (
-    <article className={`bg-white rounded-lg border shadow-md p-3 flex flex-col animate-reveal ${pending ? 'border-risk-high-text ring-1 ring-risk-high-border' : 'border-border-default'}`} style={{ animationDelay: `${index * 70}ms` }}>
+    <article className={`group relative bg-white rounded-lg border shadow-md p-3 flex flex-col animate-reveal transition-all duration-normal hover:shadow-lg hover:-translate-y-0.5 focus-within:shadow-lg ${pending ? 'border-risk-high-text ring-1 ring-risk-high-border' : 'border-border-default'}`} style={{ animationDelay: `${index * 70}ms` }}>
       <div className="relative">
-        <Link to={`/fields/${field.id}`} className="block rounded-md overflow-hidden" aria-label={`Open ${field.name}`}>
+        <div className="rounded-md overflow-hidden">
           <FieldScene crop={crop} seed={index + 3} className="w-full h-40 sm:h-44 block" />
-        </Link>
+        </div>
         <PendingTag status={detail} className="absolute top-3 left-3" />
       </div>
 
       <div className="px-2 pt-4 flex-1">
         <h2 className="text-xl font-semibold text-ink-primary leading-snug">
-          {field.name} <span className="text-ink-muted font-normal">&middot;</span> {cropName}
+          {/* The link stretches over the whole card, so clicking anywhere opens the field. The
+              buttons at the bottom sit above it (relative z-10) and keep their own actions. */}
+          <Link to={`/fields/${field.id}`} className="after:absolute after:inset-0 after:rounded-lg focus-visible:after:ring-2 focus-visible:after:ring-primary-600 group-hover:underline">
+            {field.name} <span className="text-ink-muted font-normal no-underline">&middot;</span> {cropName}
+          </Link>
         </h2>
 
         <div className="mt-3 flex items-start justify-between gap-3">
@@ -102,7 +106,7 @@ export default function FarmCard({ plot, cropName, detail, ratings, onRemove, in
         )}
       </div>
 
-      <div className="mt-4 flex items-center gap-2 px-1 pb-1">
+      <div className="relative z-10 mt-4 flex items-center gap-2 px-1 pb-1">
         <Link
           to={`/fields/${field.id}/soil`}
           className="flex-1 inline-flex items-center justify-center gap-1.5 min-h-[44px] rounded-full border-2 border-primary-600 text-primary-700 hover:bg-primary-50 text-sm font-medium transition-colors"

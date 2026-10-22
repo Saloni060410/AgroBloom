@@ -35,7 +35,7 @@ export default function SiteNav() {
 
   const cta = isAuthenticated ? (
     <Link
-      to="/dashboard"
+      to="/overview"
       className="inline-flex items-center min-h-touch px-5 rounded-md bg-primary-600 hover:bg-primary-700 text-white text-[15px] font-medium shadow-sm transition-colors"
     >
       {firstName(user?.name)}&apos;s Dashboard

@@ -8,7 +8,8 @@ import { usePlotDetails } from '../hooks/usePlotDetails.js'
 import PendingTag from '../components/farms/PendingTag.jsx'
 import { soilHealthScore, soilHealthBand } from '../utils/soilHealth.js'
 import { firstName, titleCase } from '../utils/format.js'
-import WeatherCard from '../components/layout/WeatherCard.jsx'
+import LocalWeatherCard from '../components/layout/LocalWeatherCard.jsx'
+import { Avatar } from '../components/layout/UserMenu.jsx'
 import { BRAND } from '../components/brand/brand.js'
 
 function Kpi({ icon: Icon, label, value, tone = 'bg-primary-100 text-primary-700' }) {
@@ -45,8 +46,9 @@ export default function Overview() {
     const d = details[field.id]
     if (!d) continue
     if (d.needsSoil) {
-      attention.push({ id: `${field.id}-soil`, tone: 'warn', field, text: 'No soil test yet. Enter one to get a dose.', to: `/fields/${field.id}/soil`, cta: 'Enter soil test' })
-      continue
+      const missing = d.soilState.state === 'missing'
+      attention.push({ id: `${field.id}-soil`, tone: 'warn', field, text: d.soilState.reason, to: `/fields/${field.id}/soil`, cta: missing ? 'Enter soil test' : 'Retest soil' })
+      if (missing) continue
     }
     const rec = d.recommendation
     if (rec?.risk?.level === 'HIGH' || rec?.risk?.level === 'MEDIUM') {
@@ -64,11 +66,14 @@ export default function Overview() {
   return (
     <div className="space-y-8">
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-5 animate-reveal">
-        <div>
-          <h1 className="text-3xl sm:text-[2.2rem] font-bold text-ink-primary">Overview</h1>
-          <p className="mt-1 text-ink-secondary">Here is where your fields stand today, {firstName(user?.name)}.</p>
+        <div className="flex items-center gap-4">
+          <Avatar name={user?.name} size={72} className="ring-4 ring-white shadow-md" />
+          <div>
+            <h1 className="text-3xl sm:text-[2.2rem] font-bold text-ink-primary leading-tight">Welcome back, {firstName(user?.name)}!</h1>
+            <p className="mt-1 text-ink-secondary">Here is where your fields stand today.</p>
+          </div>
         </div>
-        <WeatherCard field={weatherField} />
+        <LocalWeatherCard plots={plots} fallbackField={weatherField} />
       </header>
 
       <section aria-label="Totals" className="grid sm:grid-cols-2 xl:grid-cols-4 gap-4 animate-reveal delay-1">

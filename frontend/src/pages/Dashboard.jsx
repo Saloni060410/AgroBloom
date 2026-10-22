@@ -1,15 +1,11 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import useDocumentTitle from '../hooks/useDocumentTitle.js'
-import { useUserStore } from '../store/useUserStore.js'
 import { useFarmStore } from '../store/useFarmStore.js'
 import { usePlotStore } from '../store/usePlotStore.js'
 import { usePlotDetails } from '../hooks/usePlotDetails.js'
 import * as endpoints from '../services/endpoints.js'
-import { firstName } from '../utils/format.js'
-import { Avatar } from '../components/layout/UserMenu.jsx'
-import WeatherCard from '../components/layout/WeatherCard.jsx'
 import FarmCard from '../components/farms/FarmCard.jsx'
+import { useSoilPromptStore } from '../store/useSoilPromptStore.js'
 import AddFarmModal from '../components/farms/AddFarmModal.jsx'
 import Modal from '../components/ui/Modal.jsx'
 import { AddFarmArt } from '../components/illustrations/SmallArt.jsx'
@@ -17,8 +13,7 @@ import { BRAND } from '../components/brand/brand.js'
 
 export default function Dashboard() {
   useDocumentTitle(`My Fields — ${BRAND.name}`)
-  const navigate = useNavigate()
-  const user = useUserStore((s) => s.user)
+  const showSoilPrompt = useSoilPromptStore((s) => s.show)
   const { plots, status, loadPlots, addPlot, removeFarm } = usePlotStore()
   const { deleteFarm } = useFarmStore()
   const { details, ratings } = usePlotDetails(plots)
@@ -35,13 +30,12 @@ export default function Dashboard() {
   }, [loadPlots])
 
   const cropName = (id) => crops.find((c) => c.id === id)?.name_en || (id ? id.charAt(0).toUpperCase() + id.slice(1) : 'No crop')
-  const weatherField = plots.find((p) => p.field.latitude != null)?.field || plots[0]?.field
 
   const handleCreated = (plot) => {
     addPlot(plot)
     setIsAddOpen(false)
-    // A brand-new plot has no soil test, so every dose for it would be a guess. Start there.
-    navigate(`/fields/${plot.field.id}/soil`)
+    // A brand-new plot has no soil test, so every dose for it would be a guess: ask for one now.
+    showSoilPrompt([plot.field.id])
   }
 
   const confirmRemove = async () => {
@@ -68,18 +62,6 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-8">
-      <header className="flex flex-col md:flex-row md:items-center justify-between gap-5 animate-reveal">
-        <div className="flex items-center gap-4">
-          <Avatar name={user?.name} size={72} className="ring-4 ring-white shadow-md" />
-          <h1 className="text-3xl sm:text-[2.2rem] font-bold text-ink-primary leading-tight">
-            Welcome back,
-            <br />
-            {firstName(user?.name)}!
-          </h1>
-        </div>
-        <WeatherCard field={weatherField} />
-      </header>
-
       <section aria-labelledby="active-farmlands">
         <div className="flex flex-wrap items-center gap-3 mb-5">
           <h2 id="active-farmlands" className="text-2xl font-semibold text-ink-primary">Active Farmlands</h2>

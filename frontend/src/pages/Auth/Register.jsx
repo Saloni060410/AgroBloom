@@ -54,7 +54,7 @@ export default function Register() {
         password: formData.password,
         role: formData.role,
       })
-      navigate(location.state?.from?.pathname || '/dashboard', { replace: true })
+      navigate(location.state?.from?.pathname || '/overview', { replace: true })
     } catch (err) {
       setApiError(err.message || 'Registration failed. Check your details and try again.')
     } finally {
