@@ -2,7 +2,7 @@
 
 **Role:** AI/ML data: datasets, reference tables, weather, risk, evaluation  
 **Branch:** `feature/richa-ml-data`  
-**Repo:** https://github.com/Saloni060410/KhetGPT.git
+**Repo:** https://github.com/Saloni060410/AgroBloom.git
 
 Smart India Hackathon, PSAI01: Sustainable Fertilizer Usage Optimizer. This pack is generated from one shared plan, so the four packs always agree on steps, contracts and integration points.
 
@@ -70,8 +70,8 @@ Expected: Python 3.11+. No API keys are needed: weather comes from Open-Meteo.
 **2. Clone and switch to your branch**
 
 ```bash
-git clone https://github.com/Saloni060410/KhetGPT.git
-cd KhetGPT
+git clone https://github.com/Saloni060410/AgroBloom.git
+cd AgroBloom
 git checkout feature/richa-ml-data
 git pull origin main --rebase
 ```

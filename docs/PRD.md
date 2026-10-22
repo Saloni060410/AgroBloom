@@ -206,8 +206,8 @@ KhetGPT/
 **One-time setup** (any one of you, from the repo root):
 
 ```bash
-git clone https://github.com/Saloni060410/KhetGPT.git
-cd KhetGPT
+git clone https://github.com/Saloni060410/AgroBloom.git
+cd AgroBloom
 
 git checkout -b feature/saloni-ml-core   && git push -u origin feature/saloni-ml-core
 git checkout main

@@ -2,7 +2,7 @@
 
 **Role:** Frontend: UI, 3D, animation  
 **Branch:** `feature/darsh-frontend`  
-**Repo:** https://github.com/Saloni060410/KhetGPT.git
+**Repo:** https://github.com/Saloni060410/AgroBloom.git
 
 Smart India Hackathon, PSAI01: Sustainable Fertilizer Usage Optimizer. This pack is generated from one shared plan, so the four packs always agree on steps, contracts and integration points.
 
@@ -61,8 +61,8 @@ Expected: Node 22+.
 **2. Clone and switch to your branch**
 
 ```bash
-git clone https://github.com/Saloni060410/KhetGPT.git
-cd KhetGPT
+git clone https://github.com/Saloni060410/AgroBloom.git
+cd AgroBloom
 git checkout feature/darsh-frontend
 git pull origin main --rebase
 ```

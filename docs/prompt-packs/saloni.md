@@ -2,7 +2,7 @@
 
 **Role:** AI/ML core: models and serving  
 **Branch:** `feature/saloni-ml-core`  
-**Repo:** https://github.com/Saloni060410/KhetGPT.git
+**Repo:** https://github.com/Saloni060410/AgroBloom.git
 
 Smart India Hackathon, PSAI01: Sustainable Fertilizer Usage Optimizer. This pack is generated from one shared plan, so the four packs always agree on steps, contracts and integration points.
 
@@ -41,8 +41,8 @@ Expected: Python 3.11+. Docker only becomes necessary at Phase 4.
 **2. Clone and switch to your branch**
 
 ```bash
-git clone https://github.com/Saloni060410/KhetGPT.git
-cd KhetGPT
+git clone https://github.com/Saloni060410/AgroBloom.git
+cd AgroBloom
 git checkout feature/saloni-ml-core
 git pull origin main --rebase
 ```

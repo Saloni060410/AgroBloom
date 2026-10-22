@@ -1,6 +1,6 @@
 # Git workflow
 
-Repo: `https://github.com/Saloni060410/KhetGPT`
+Repo: `https://github.com/Saloni060410/AgroBloom`
 
 ## Branches
 
