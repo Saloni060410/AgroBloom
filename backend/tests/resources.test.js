@@ -137,3 +137,44 @@ test('fertilizer log with a future date returns 422', async () => {
   })
   assert.equal(res.status, 422)
 })
+
+test('a farm can hold several crop fields, and deleting one leaves the rest', async () => {
+  const user = await registerUser('multicrop@test.dev')
+  const farm = await prisma.farm.create({ data: { name: 'North Plot', ownerId: user.user.id } })
+  const headers = { 'Content-Type': 'application/json', ...authed(user.accessToken) }
+
+  const created = []
+  for (const [name, cropType] of [['North Plot', 'wheat'], ['North Plot \u2013 Chickpea', 'chickpea']]) {
+    const res = await fetch(`${baseUrl}/farms/${farm.id}/fields`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ name, cropType, growthStage: 'sowing' }),
+    })
+    assert.equal(res.status, 201)
+    created.push(await res.json())
+  }
+  await prisma.soilTest.create({
+    data: { fieldId: created[1].id, n: 210, p: 9, k: 90, ph: 7.4, organicCarbon: 0.42, moisture: 18 },
+  })
+
+  const listed = await (await fetch(`${baseUrl}/farms/${farm.id}/fields`, { headers: authed(user.accessToken) })).json()
+  assert.equal(listed.total, 2)
+
+  const del = await fetch(`${baseUrl}/fields/${created[1].id}`, { method: 'DELETE', headers: authed(user.accessToken) })
+  assert.equal(del.status, 204)
+
+  const after = await (await fetch(`${baseUrl}/farms/${farm.id}/fields`, { headers: authed(user.accessToken) })).json()
+  assert.deepEqual(after.items.map((f) => f.id), [created[0].id])
+  assert.equal(await prisma.soilTest.count({ where: { fieldId: created[1].id } }), 0)
+})
+
+test('another user cannot delete someone else\'s field', async () => {
+  const owner = await registerUser('delOwner@test.dev')
+  const other = await registerUser('delOther@test.dev')
+  const farm = await prisma.farm.create({ data: { name: 'Farm', ownerId: owner.user.id } })
+  const field = await prisma.field.create({ data: { name: 'Field', farmId: farm.id, cropType: 'wheat', growthStage: 'sowing' } })
+
+  const res = await fetch(`${baseUrl}/fields/${field.id}`, { method: 'DELETE', headers: authed(other.accessToken) })
+  assert.equal(res.status, 404)
+  assert.equal(await prisma.field.count({ where: { id: field.id } }), 1)
+})

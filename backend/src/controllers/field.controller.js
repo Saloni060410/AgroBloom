@@ -116,3 +116,14 @@ export async function patchField(req, res, next) {
     next(err)
   }
 }
+
+// Removes one crop's field. Its soil tests, fertilizer logs and recommendations go with it
+// (onDelete: Cascade); the farm and its other fields stay.
+export async function deleteField(req, res, next) {
+  try {
+    await prisma.field.delete({ where: { id: req.field.id } })
+    res.status(204).end()
+  } catch (err) {
+    next(err)
+  }
+}

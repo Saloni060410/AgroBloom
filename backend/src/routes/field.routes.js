@@ -2,7 +2,7 @@ import { Router } from 'express'
 import { requireAuth } from '../middleware/auth.middleware.js'
 import { assertFieldOwner } from '../middleware/ownership.js'
 import { validate } from '../middleware/validate.middleware.js'
-import { patchFieldSchema, getField, patchField } from '../controllers/field.controller.js'
+import { patchFieldSchema, getField, patchField, deleteField } from '../controllers/field.controller.js'
 import { createSoilTestSchema, createSoilTest, listSoilTests } from '../controllers/soilTest.controller.js'
 import {
   createFertilizerLogSchema,
@@ -24,6 +24,7 @@ router.use(requireAuth)
 
 router.get('/:id', assertFieldOwner(), getField)
 router.patch('/:id', assertFieldOwner(), validate(patchFieldSchema), patchField)
+router.delete('/:id', assertFieldOwner(), deleteField)
 
 router.post('/:id/soil-tests', assertFieldOwner(), validate(createSoilTestSchema), createSoilTest)
 router.get('/:id/soil-tests', assertFieldOwner(), listSoilTests)
