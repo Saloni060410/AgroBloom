@@ -64,9 +64,16 @@ Data gaps must never turn into invented numbers.
   },
   "previous_fertilizer_usage": [
     { "type": "urea", "quantity_kg_per_acre": 0.0, "applied_on": "YYYY-MM-DD" }
-  ]
+  ],
+  "soil_tested_on": "YYYY-MM-DD | null",
+  "previous_soil_tests": [
+    { "tested_on": "YYYY-MM-DD", "n": 0.0, "p": 0.0, "k": 0.0, "ph": 0.0, "organic_carbon": 0.0, "moisture": 0.0 }
+  ],
+  "rainfall_history": [ { "date": "YYYY-MM-DD", "mm": 0.0 } ]
 }
 ```
+
+`soil_tested_on`, `previous_soil_tests` and `rainfall_history` are optional and default to empty. `previous_soil_tests` holds earlier tests of the same field (not the one sent as `soil`), newest first. `rainfall_history` is rain that actually fell, one entry per past day, up to the last 60 days. When any of them is missing the engine skips the adjustment that needs it and the response is the same as before.
 
 **Response**
 ```json
@@ -106,7 +113,11 @@ Data gaps must never turn into invented numbers.
       "k": { "...": "same keys, K2O basis" }
     },
     "formula": "string",
-    "data_notes": ["string"]
+    "data_notes": ["string"],
+    "history_insights": [
+      { "kind": "soil_jump | rating_dropped | rating_improved | oc_falling", "severity": "warning | watch | good", "nutrient": "n | p | k | ph | organic_carbon | null", "text": "string" }
+    ],
+    "stage_used": "string | null"
   },
   "cost": {
     "estimated_cost_inr_per_acre": 0.0,
@@ -127,6 +138,9 @@ Data gaps must never turn into invented numbers.
 - The engine selects whichever product a needed nutrient maps to, priced or not (see the missing-data policy above). `cost.prices_as_of` is the oldest `price_date` among the *priced* products actually used, so the UI can say how old those prices are; an unpriced product doesn't affect it.
 - `data_notes` lists caveats the user should see: skipped credit, non-live weather, old prices, an unpriced product excluded from the cost breakdown, ignored inputs.
 - `saving_inr_per_acre` can be negative. The UI explains it.
+- `stage_used` is the growth stage the plan was built for. It is the later of the saved `growth_stage` and the stage implied by `sowing_date` (the engine never moves a stage back). When it moved forward, `data_notes` says so.
+- Credit for earlier phosphorus and potassium applications lasts the crop season, not a flat 60 days. Nitrogen credit still uses the 60-day window, and is halved when `rainfall_history` shows 20 mm or more within 3 days after the application (nitrogen is lost to leaching and runoff). Top-dressing is held back for 2 days after heavy rain. All of these numbers are team assumptions in `ml/data/external/agronomy_rules.yaml` and need agronomist sign-off.
+- `history_insights` compares the soil test used with earlier ones: a sudden jump in a nutrient, a rating that dropped or improved, organic carbon falling over three or more tests. These are warnings and trends only. They never change the dose, which still comes from the published tables. Each insight is also copied into `data_notes`, so a client that only shows `data_notes` still shows them.
 
 ## POST /risk-score
 

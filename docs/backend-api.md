@@ -287,7 +287,10 @@ override) still has no `cropType` or `growthStage`, or if there's no soil test a
 test/weather/previous-usage) within 30s of the last one returns the **existing** recommendation
 with **200**, not a new row (verified: two immediately-repeated calls returned the identical
 `id`, second one at `200`) -- a real repeated network retry doesn't create duplicate history
-entries. Calls the ML service and Open-Meteo weather internally; **502** if the ML service is
+entries. The payload also carries the earlier soil tests of the field (up to 5, before the one used)
+and the last 60 days of observed rain from Open-Meteo, so the engine can flag soil-test jumps and
+trends and reduce nitrogen credit after heavy rain; the rain lookup is best effort and falls back to
+none. Calls the ML service and Open-Meteo weather internally; **502** if the ML service is
 unreachable or its response doesn't validate, **400** if the ML service reports the request
 itself was invalid.
 
@@ -318,6 +321,8 @@ already applied:
   "explanation": {
     "formula": "fertilizer needed = standard dose for the crop + soil-test adjustment - credit for recent applications",
     "data_notes": ["The product classifier's top guess (np_28_28_0) differed from the rule-based plan; the rule-based plan was kept."],
+    "history_insights": [],
+    "stage_used": "second_irrigation",
     "top_factors": ["...", "identical to the top-level topFactors above, verbatim -- see the gap noted at the top of this doc"],
     "nutrient_balance": {
       "n": { "method": "reference_dose", "soil_rating": "medium", "prior_credit_kg_ha": 72.636, "standard_dose_kg_ha": 123.6, "soil_adjustment_kg_ha": 0, "fertilizer_needed_kg_ha": 50.964 },
