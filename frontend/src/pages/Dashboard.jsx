@@ -68,20 +68,26 @@ export default function Dashboard() {
   }
 
   const loading = status === 'idle' || status === 'loading'
-  // Fields with pending work come first (stable otherwise), so they are seen without scrolling.
-  const ordered = [...plots].sort(
-    (a, b) => Number((details[b.field.id]?.pendingCount || 0) > 0) - Number((details[a.field.id]?.pendingCount || 0) > 0),
-  )
-  const pendingFields = ordered.filter((p) => (details[p.field.id]?.pendingCount || 0) > 0).length
+  // One card per farm; the crops grown on it are its plots. Farms with pending work come first
+  // (stable otherwise), so they are seen without scrolling.
+  const pendingIn = (plot) => (details[plot.field.id]?.pendingCount || 0) > 0
+  const groups = []
+  for (const plot of plots) {
+    const existing = groups.find((g) => String(g.farm.id) === String(plot.farm.id))
+    if (existing) existing.plots.push(plot)
+    else groups.push({ farm: plot.farm, plots: [plot] })
+  }
+  const ordered = [...groups].sort((a, b) => Number(b.plots.some(pendingIn)) - Number(a.plots.some(pendingIn)))
+  const pendingFarms = ordered.filter((g) => g.plots.some(pendingIn)).length
 
   return (
     <div className="space-y-8">
       <section aria-labelledby="active-farmlands">
         <div className="flex flex-wrap items-center gap-3 mb-5">
           <h2 id="active-farmlands" className="text-2xl font-semibold text-ink-primary">Active Farmlands</h2>
-          {pendingFields > 0 && (
+          {pendingFarms > 0 && (
             <span className="inline-flex items-center rounded-full bg-risk-high-bg text-risk-high-text border border-risk-high-border text-sm font-semibold px-3 py-1">
-              {pendingFields} of {plots.length} {pendingFields === 1 ? 'field has' : 'fields have'} pending work
+              {pendingFarms} of {groups.length} {pendingFarms === 1 ? 'farm has' : 'farms have'} pending work
             </span>
           )}
         </div>
@@ -100,14 +106,13 @@ export default function Dashboard() {
             ))}
 
           {!loading &&
-            ordered.map((plot, i) => (
+            ordered.map((group, i) => (
               <FarmCard
-                key={plot.field.id}
+                key={group.farm.id}
                 index={i}
-                plot={plot}
-                cropName={cropName(plot.field.cropType)}
-                siblings={siblingsOf(plot)}
-                detail={details[plot.field.id]}
+                group={group}
+                cropNameOf={cropName}
+                details={details}
                 ratings={ratings}
                 onAddCrop={setAddCropTo}
                 onRemove={(target) => {

@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Droplets, Sprout, FlaskConical, ArrowRight, Trash2, CalendarClock, Plus } from 'lucide-react'
 import FieldScene from '../illustrations/FieldScene.jsx'
@@ -13,24 +14,74 @@ function dueText(days) {
   return `in ${days} day${days === 1 ? '' : 's'}`
 }
 
-/** One illustrated farmland card: photo, plot facts, soil health ring and the next dose. */
-export default function FarmCard({ plot, cropName, siblings = [], detail, ratings, onRemove, onAddCrop, index }) {
-  const { farm, field } = plot
+/**
+ * One illustrated card per farm. A farm with several crops shows a tab for each on the picture; the
+ * rest of the card (facts, soil health, next dose, buttons) follows the selected crop.
+ */
+export default function FarmCard({ group, cropNameOf, details = {}, ratings, onRemove, onAddCrop, index }) {
+  const { farm, plots } = group
+  const [pickedId, setPickedId] = useState(null)
+  // The picked crop, else the first one with work due, else the first.
+  const plot =
+    plots.find((p) => p.field.id === pickedId) ||
+    plots.find((p) => (details[p.field.id]?.pendingCount || 0) > 0) ||
+    plots[0]
+  const { field } = plot
+  const detail = details[field.id]
+  const cropName = cropNameOf(field.cropType)
+  const several = plots.length > 1
+  const totalAcres = plots.reduce((sum, p) => sum + (p.field.areaAcres || 0), 0)
   const soil = detail?.soil || null
   const score = soilHealthScore(soil, ratings)
   const band = soilHealthBand(score)
   const npk = npkSummary(soil, ratings)
   const next = detail?.next || null
-  const pending = (detail?.pendingCount || 0) > 0
+  const pendingAnywhere = plots.some((p) => (details[p.field.id]?.pendingCount || 0) > 0)
   const crop = field.cropType || 'wheat'
 
   return (
-    <article className={`group relative bg-white rounded-lg border shadow-md p-3 flex flex-col animate-reveal transition-all duration-normal hover:shadow-lg hover:-translate-y-0.5 focus-within:shadow-lg ${pending ? 'border-risk-high-text ring-1 ring-risk-high-border' : 'border-border-default'}`} style={{ animationDelay: `${index * 70}ms` }}>
+    <article className={`group relative bg-white rounded-lg border shadow-md p-3 flex flex-col animate-reveal transition-all duration-normal hover:shadow-lg hover:-translate-y-0.5 focus-within:shadow-lg ${pendingAnywhere ? 'border-risk-high-text ring-1 ring-risk-high-border' : 'border-border-default'}`} style={{ animationDelay: `${index * 70}ms` }}>
       <div className="relative">
         <div className="rounded-md overflow-hidden">
           <FieldScene crop={crop} seed={index + 3} className="w-full h-40 sm:h-44 block" />
         </div>
         <PendingTag status={detail} className="absolute top-3 left-3" />
+
+        {/* Above the card's stretched link (z-10), so the tabs switch crop instead of opening it. */}
+        <div role="tablist" aria-label={`Crops on ${farm.name}`} className="absolute z-10 left-3 right-3 bottom-3 flex gap-1.5 overflow-x-auto">
+          {several &&
+            plots.map((p) => {
+              const selected = p.field.id === field.id
+              const due = (details[p.field.id]?.pendingCount || 0) > 0
+              return (
+                <button
+                  key={p.field.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={selected}
+                  onClick={() => setPickedId(p.field.id)}
+                  className={`shrink-0 inline-flex items-center gap-1.5 min-h-[38px] px-3.5 rounded-full border text-sm font-medium cursor-pointer transition-colors ${
+                    selected ? 'bg-primary-600 border-primary-600 text-white' : 'bg-white/85 border-white/70 text-ink-primary hover:bg-white'
+                  }`}
+                >
+                  {due && (
+                    <span className={`w-2 h-2 rounded-full bg-risk-high-text ${selected ? 'ring-2 ring-white' : ''}`}>
+                      <span className="sr-only">Work due. </span>
+                    </span>
+                  )}
+                  {cropNameOf(p.field.cropType)}
+                </button>
+              )
+            })}
+          <button
+            type="button"
+            onClick={() => onAddCrop?.(plot)}
+            className="shrink-0 inline-flex items-center gap-1 min-h-[38px] px-3 rounded-full border border-dashed border-white bg-black/20 text-white text-sm font-medium hover:bg-black/30 cursor-pointer transition-colors"
+          >
+            <Plus className="w-3.5 h-3.5" aria-hidden="true" /> Crop
+            <span className="sr-only"> (add another crop to {farm.name})</span>
+          </button>
+        </div>
       </div>
 
       <div className="px-2 pt-4 flex-1">
@@ -38,7 +89,8 @@ export default function FarmCard({ plot, cropName, siblings = [], detail, rating
           {/* The link stretches over the whole card, so clicking anywhere opens the field. The
               buttons at the bottom sit above it (relative z-10) and keep their own actions. */}
           <Link to={`/fields/${field.id}`} className="after:absolute after:inset-0 after:rounded-lg focus-visible:after:ring-2 focus-visible:after:ring-primary-600 group-hover:underline">
-            {farm.name} <span className="text-ink-muted font-normal no-underline">&middot;</span> {cropName}
+            {farm.name} <span className="text-ink-muted font-normal no-underline">&middot;</span>{' '}
+            {several ? <span className="text-ink-secondary text-base font-normal">{totalAcres ? `${Number(totalAcres.toFixed(1))} acres, ` : ''}{plots.length} crops</span> : cropName}
           </Link>
         </h2>
 
@@ -64,21 +116,6 @@ export default function FarmCard({ plot, cropName, siblings = [], detail, rating
             )}
             <div className="text-xs font-semibold -mt-1" style={{ color: band.color }}>{band.label}</div>
           </div>
-        </div>
-
-        <div className="relative z-10 mt-3 flex flex-wrap items-center gap-2">
-          {siblings.map((s) => (
-            <Link key={s.id} to={`/fields/${s.id}`} className="inline-flex items-center min-h-[32px] px-3 rounded-full bg-accent-maize text-ink-primary text-xs font-medium hover:underline">
-              Also growing: {s.cropName}
-            </Link>
-          ))}
-          <button
-            type="button"
-            onClick={() => onAddCrop?.(plot)}
-            className="inline-flex items-center gap-1 min-h-[32px] px-3 rounded-full border border-dashed border-border-strong text-xs font-medium text-primary-700 hover:bg-primary-50 cursor-pointer transition-colors"
-          >
-            <Plus className="w-3.5 h-3.5" aria-hidden="true" /> Add another crop
-          </button>
         </div>
       </div>
 
@@ -137,8 +174,8 @@ export default function FarmCard({ plot, cropName, siblings = [], detail, rating
         <button
           type="button"
           onClick={() => onRemove(plot)}
-          aria-label={siblings.length ? `Remove ${cropName} from ${farm.name}` : `Remove ${farm.name}`}
-          title={siblings.length ? `Remove ${cropName} from this farm` : 'Remove this farm'}
+          aria-label={several ? `Remove ${cropName} from ${farm.name}` : `Remove ${farm.name}`}
+          title={several ? `Remove ${cropName} from this farm` : 'Remove this farm'}
           className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center rounded-full text-ink-muted hover:text-risk-high-text hover:bg-risk-high-bg cursor-pointer transition-colors"
         >
           <Trash2 className="w-[18px] h-[18px]" aria-hidden="true" />
