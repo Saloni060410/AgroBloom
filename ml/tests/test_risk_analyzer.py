@@ -224,8 +224,8 @@ def test_applied_nutrient_the_crop_does_not_need_does_not_crash():
     """Regression: wheat on a medium-potassium soil needs 0 kg/ha K2O, so a logged potash (MOP)
     application gave ratio=inf and `round(inf * 100)` raised OverflowError -> HTTP 500 for every
     recommendation on that field."""
-    from src.degradation.risk_analyzer import _compute_risk
     from src.data_pipeline.soil_data_loader import load_reference_tables
+    from src.degradation.risk_analyzer import _compute_risk
 
     tables = load_reference_tables()
     rules = {"over_application_ratio_high": 1.5, "over_application_ratio_medium": 1.2,
@@ -244,8 +244,8 @@ def test_applied_nutrient_the_crop_does_not_need_does_not_crash():
 
 
 def test_imbalance_with_an_unneeded_nutrient_has_its_own_wording():
-    from src.degradation.risk_analyzer import _compute_risk
     from src.data_pipeline.soil_data_loader import load_reference_tables
+    from src.degradation.risk_analyzer import _compute_risk
 
     tables = load_reference_tables()
     rules = {"over_application_ratio_high": 1.5, "over_application_ratio_medium": 1.2,

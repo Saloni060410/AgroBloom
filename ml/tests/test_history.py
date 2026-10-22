@@ -124,7 +124,7 @@ def test_phosphorus_from_a_basal_dap_still_counts_late_in_the_season(engine):
 # ---- earlier soil tests ---------------------------------------------------------------------
 
 def previous(days, **values):
-    return {"tested_on": ago(days), **{**SOIL, **values}}
+    return {"tested_on": ago(days), **SOIL, **values}
 
 
 def test_a_reading_far_from_the_last_test_is_flagged_as_a_possible_misread(tables, rules):

@@ -18,6 +18,7 @@ the farmer is told. Every threshold is in agronomy_rules.yaml.
 from __future__ import annotations
 
 from datetime import date, timedelta
+from itertools import pairwise
 
 from src.data_pipeline.feature_engineering import soil_rating
 from src.data_pipeline.soil_data_loader import ReferenceTables
@@ -142,7 +143,7 @@ def soil_history_insights(
     series = sorted([*earlier, {"tested_on": (latest_date or today).isoformat(), **latest}], key=lambda t: _as_date(t["tested_on"]))
     if "organic_carbon" not in flagged and len(series) >= rules["oc_trend_min_tests"]:
         values = [float(t["organic_carbon"]) for t in series]
-        never_rises = all(b <= a + 1e-9 for a, b in zip(values, values[1:]))
+        never_rises = all(b <= a + 1e-9 for a, b in pairwise(values))
         if never_rises and values[0] - values[-1] >= rules["oc_trend_drop"]:
             out.append({"kind": "oc_falling", "severity": "watch", "nutrient": "organic_carbon", "text": render_template(
                 "history.oc_falling", first=_fmt(values[0]), now=_fmt(values[-1]), n=len(values),

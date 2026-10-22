@@ -42,7 +42,11 @@ from src.api.schemas import (
     RiskScoreResponse,
     ScheduleItem,
 )
-from src.data_pipeline.feature_engineering import build_features, request_to_record, season_length_days
+from src.data_pipeline.feature_engineering import (
+    build_features,
+    request_to_record,
+    season_length_days,
+)
 from src.data_pipeline.soil_data_loader import (
     EXTERNAL_DIR,
     ReferenceDataError,
@@ -280,7 +284,7 @@ def _data_notes(rule_trace: list[dict], weather_source: str) -> list[str]:
 
 def recommend(request: RecommendRequest, engine: Engine, today: date | None = None) -> RecommendResponse:
     engine._require_tables()
-    today = today or date.today()  # noqa: DTZ011 -- caller (the endpoint) always passes today explicitly in tests; the default only serves real traffic
+    today = today or date.today()
 
     validate_soil(request.soil.model_dump())
     payload = request.model_dump(mode="json")
@@ -390,7 +394,7 @@ def recommend(request: RecommendRequest, engine: Engine, today: date | None = No
 
 def score_planned_risk(request: RiskScoreRequest, engine: Engine, today: date | None = None) -> RiskScoreResponse:
     engine._require_tables()
-    today = today or date.today()  # noqa: DTZ011 -- see recommend()'s identical note
+    today = today or date.today()
 
     validate_soil(request.soil.model_dump())
     payload = request.model_dump(mode="json")
