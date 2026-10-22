@@ -11,6 +11,7 @@ import { formatDate, titleCase } from '../utils/format.js'
 import { notifyScheduleChanged } from '../utils/schedule.js'
 import CropCard, { CropTile } from '../components/soil/CropCard.jsx'
 import ParamDial from '../components/soil/ParamDial.jsx'
+import ReportScanner from '../components/soil/ReportScanner.jsx'
 import FieldScene from '../components/illustrations/FieldScene.jsx'
 import { BRAND } from '../components/brand/brand.js'
 
@@ -99,7 +100,11 @@ export default function SoilInput() {
     }
   }, [fieldId])
 
-  const set = (key) => (value) => setSoil((s) => ({ ...s, [key]: value }))
+  const [scanned, setScanned] = useState({}) // meters filled from a report: 'ok' or 'check'
+  const set = (key) => (value) => {
+    setSoil((s) => ({ ...s, [key]: value }))
+    setScanned((m) => (m[key] ? { ...m, [key]: undefined } : m))
+  }
 
   const bands = useMemo(
     () => ({
@@ -254,6 +259,9 @@ export default function SoilInput() {
           </div>
         </section>
 
+        {/* Scan or upload a soil report to fill the meters */}
+        <ReportScanner soil={soil} setSoil={setSoil} onScanned={setScanned} />
+
         {/* 2. Soil parameters */}
         <section aria-labelledby="step-soil">
           <h2 id="step-soil" className="text-lg font-bold uppercase tracking-wide text-ink-primary">2. Configure soil health parameters:</h2>
@@ -264,12 +272,12 @@ export default function SoilInput() {
               : 'No soil test on file yet. The sliders start at a typical Central Punjab soil. Replace them with the values on your Soil Health Card.'}
           </p>
           <div className="mt-5 bg-white/80 border border-border-default rounded-lg shadow-sm p-5 sm:p-7 grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-x-4 gap-y-8">
-            <ParamDial id="soil-n" label="Nitrogen (N)" unit="kg/ha" min={0} max={800} value={soil.n} onChange={set('n')} bands={bands.n} />
-            <ParamDial id="soil-p" label="Phosphorus (P)" unit="kg/ha" min={0} max={60} value={soil.p} step={0.5} onChange={set('p')} bands={bands.p} decimals={1} />
-            <ParamDial id="soil-k" label="Potassium (K)" unit="kg/ha" min={0} max={800} value={soil.k} onChange={set('k')} bands={bands.k} />
-            <ParamDial id="soil-ph" label="Soil pH" unit="pH" min={4} max={10} value={soil.ph} step={0.1} onChange={set('ph')} bands={bands.ph} decimals={1} />
-            <ParamDial id="soil-oc" label="Organic Carbon" unit="%" min={0} max={2} value={soil.organicCarbon} step={0.01} onChange={set('organicCarbon')} bands={bands.oc} decimals={2} />
-            <ParamDial id="soil-moisture" label="Moisture (%)" unit="%" min={0} max={100} value={soil.moisture} onChange={set('moisture')} bands={bands.moisture} />
+            <ParamDial scanned={scanned.n} id="soil-n" label="Nitrogen (N)" unit="kg/ha" min={0} max={800} value={soil.n} onChange={set('n')} bands={bands.n} />
+            <ParamDial scanned={scanned.p} id="soil-p" label="Phosphorus (P)" unit="kg/ha" min={0} max={60} value={soil.p} step={0.5} onChange={set('p')} bands={bands.p} decimals={1} />
+            <ParamDial scanned={scanned.k} id="soil-k" label="Potassium (K)" unit="kg/ha" min={0} max={800} value={soil.k} onChange={set('k')} bands={bands.k} />
+            <ParamDial scanned={scanned.ph} id="soil-ph" label="Soil pH" unit="pH" min={4} max={10} value={soil.ph} step={0.1} onChange={set('ph')} bands={bands.ph} decimals={1} />
+            <ParamDial scanned={scanned.organicCarbon} id="soil-oc" label="Organic Carbon" unit="%" min={0} max={2} value={soil.organicCarbon} step={0.01} onChange={set('organicCarbon')} bands={bands.oc} decimals={2} />
+            <ParamDial scanned={scanned.moisture} id="soil-moisture" label="Moisture (%)" unit="%" min={0} max={100} value={soil.moisture} onChange={set('moisture')} bands={bands.moisture} />
           </div>
         </section>
 

@@ -7,7 +7,7 @@ const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v))
  * bands, and an exact-value box. `bands` is [{ upTo, color, label }] in ascending order; the last
  * band's upTo is ignored (it runs to `max`).
  */
-export default function ParamDial({ id, label, unit, value, min, max, step = 1, bands, onChange, decimals = 0 }) {
+export default function ParamDial({ id, label, unit, value, min, max, step = 1, bands, onChange, decimals = 0, scanned }) {
   const numeric = Number.isFinite(value) ? value : min
   const span = max - min
   const frac = clamp((numeric - min) / span, 0, 1)
@@ -23,6 +23,15 @@ export default function ParamDial({ id, label, unit, value, min, max, step = 1, 
       <label htmlFor={id} className="text-[15px] font-semibold text-ink-primary text-center leading-tight">
         {label}
       </label>
+      {scanned && (
+        <span
+          className={`-mt-1.5 text-[11px] font-semibold rounded-full px-2 py-0.5 border ${
+            scanned === 'check' ? 'bg-risk-med-bg text-risk-med-text border-risk-med-border' : 'bg-risk-low-bg text-risk-low-text border-risk-low-border'
+          }`}
+        >
+          {scanned === 'check' ? 'Scanned: check this' : 'From scan'}
+        </span>
+      )}
       <div className="flex items-center gap-2">
         <div className="relative w-10 h-40 shrink-0">
           <input
