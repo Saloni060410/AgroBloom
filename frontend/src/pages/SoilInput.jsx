@@ -13,6 +13,7 @@ import CropCard, { CropTile } from '../components/soil/CropCard.jsx'
 import ParamDial from '../components/soil/ParamDial.jsx'
 import ReportScanner from '../components/soil/ReportScanner.jsx'
 import FieldScene from '../components/illustrations/FieldScene.jsx'
+import PlotOptions from '../components/layout/PlotOptions.jsx'
 import { BRAND } from '../components/brand/brand.js'
 
 const LOW = '#c9683f'
@@ -204,13 +205,7 @@ export default function SoilInput() {
                 onChange={(e) => navigate(`/fields/${e.target.value}/soil`)}
                 className="w-full min-h-[52px] pl-4 pr-10 appearance-none bg-transparent text-base font-medium focus:outline-none cursor-pointer"
               >
-                {plots.map(({ field: f }) => (
-                  <option key={f.id} value={f.id}>
-                    {f.name}
-                    {f.cropType ? ` (${titleCase(f.cropType)})` : ''}
-                    {statusByField[f.id]?.pendingCount ? ` \u00b7 ${statusByField[f.id].pendingCount} pending` : ''}
-                  </option>
-                ))}
+                <PlotOptions plots={plots} note={(id) => (statusByField[id]?.pendingCount ? ` \u00b7 ${statusByField[id].pendingCount} pending` : '')} />
                 {!plots.some((p) => p.field.id === fieldId) && <option value={fieldId}>{field?.name || 'This field'}</option>}
               </select>
               <ChevronDown className="w-5 h-5 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" aria-hidden="true" />
