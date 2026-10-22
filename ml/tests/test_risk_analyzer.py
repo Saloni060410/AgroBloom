@@ -218,3 +218,45 @@ def test_a_crop_with_no_sourced_season_length_still_credits_within_the_60_day_fa
     with pytest.warns(UserWarning, match="no sourced season length"):
         r = assess_recommendation("rice", nb_rice, [], SOIL_OK, WEATHER_OK, prior, RULES, TABLES)
     assert r["level"] == "low"  # 30 days is within even the 60-day fallback -> credited
+
+
+def test_applied_nutrient_the_crop_does_not_need_does_not_crash():
+    """Regression: wheat on a medium-potassium soil needs 0 kg/ha K2O, so a logged potash (MOP)
+    application gave ratio=inf and `round(inf * 100)` raised OverflowError -> HTTP 500 for every
+    recommendation on that field."""
+    from src.degradation.risk_analyzer import _compute_risk
+    from src.data_pipeline.soil_data_loader import load_reference_tables
+
+    tables = load_reference_tables()
+    rules = {"over_application_ratio_high": 1.5, "over_application_ratio_medium": 1.2,
+             "under_application_ratio": 0.5, "rain_hold_mm": 10, "credit_window_days": 60}
+    balance = {
+        "n": {"fertilizer_needed_kg_ha": 100.0, "soil_rating": "medium"},
+        "p": {"fertilizer_needed_kg_ha": 50.0, "soil_rating": "medium"},
+        "k": {"fertilizer_needed_kg_ha": 0.0, "soil_rating": "medium"},
+    }
+    soil = {"organic_carbon": 0.6, "ph": 7.0}
+    risk = _compute_risk({"n": 100.0, "p": 50.0, "k": 12.0}, balance, soil, {"rainfall_mm_forecast": 0}, rules, tables)
+    assert risk["level"] == "high"
+    assert "needs none" in risk["reason"]
+    assert risk["over_application_pct"] is None  # no percentage over a need of zero
+    assert "inf" not in risk["reason"] and "None" not in risk["reason"]
+
+
+def test_imbalance_with_an_unneeded_nutrient_has_its_own_wording():
+    from src.degradation.risk_analyzer import _compute_risk
+    from src.data_pipeline.soil_data_loader import load_reference_tables
+
+    tables = load_reference_tables()
+    rules = {"over_application_ratio_high": 1.5, "over_application_ratio_medium": 1.2,
+             "under_application_ratio": 0.5, "rain_hold_mm": 10, "credit_window_days": 60}
+    balance = {
+        "n": {"fertilizer_needed_kg_ha": 100.0, "soil_rating": "low"},
+        "p": {"fertilizer_needed_kg_ha": 50.0, "soil_rating": "medium"},
+        "k": {"fertilizer_needed_kg_ha": 0.0, "soil_rating": "medium"},
+    }
+    # K applied though not needed, N barely applied: both an over- and an under-application signal.
+    risk = _compute_risk({"n": 5.0, "p": 50.0, "k": 12.0}, balance, {"organic_carbon": 0.6, "ph": 7.0},
+                          {"rainfall_mm_forecast": 0}, rules, tables)
+    assert risk["level"] == "high"
+    assert risk["reason"]  # rendered without raising

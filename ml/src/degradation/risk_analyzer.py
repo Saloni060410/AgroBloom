@@ -4,6 +4,7 @@ the same Risk. Thresholds come only from agronomy_rules.yaml (passed in as `rule
 soil_test_ratings.csv (via feature_engineering.soil_rating); nothing here is hardcoded.
 """
 
+import math
 import warnings
 from datetime import UTC, date, datetime
 
@@ -55,6 +56,13 @@ def _ratio(applied: float, needed: float) -> float:
     return float("inf") if applied > 0 else 1.0
 
 
+def _pct(ratio: float) -> int | None:
+    """A ratio as a whole percent, or None when it is infinite (the crop needs none of this
+    nutrient but some was applied). round(inf * 100) raises OverflowError, which used to turn any
+    logged application of an unneeded nutrient -- e.g. potash on wheat -- into an HTTP 500."""
+    return None if math.isinf(ratio) else round(ratio * 100)
+
+
 def _compute_risk(applied_kg_ha: dict[str, float], nutrient_balance: dict, soil: dict,
                    weather: dict, rules: dict, tables: ReferenceTables) -> dict:
     from src.data_pipeline.feature_engineering import soil_rating
@@ -69,12 +77,14 @@ def _compute_risk(applied_kg_ha: dict[str, float], nutrient_balance: dict, soil:
         ratios[nutrient] = ratio
         label = _NUTRIENT_LABEL[nutrient]
         render_params = {"nutrient_label": label, "applied": round(applied, 1),
-                          "needed": round(needed, 1), "ratio_pct": round(ratio * 100)}
+                          "needed": round(needed, 1), "ratio_pct": _pct(ratio)}
+        # Nothing needed but something applied has no meaningful percentage: its own wording.
+        over_prefix = "over_application_no_need" if math.isinf(ratio) else "over_application"
 
         if ratio >= rules["over_application_ratio_high"]:
-            signals.append(("high", "over_application", nutrient, render_params))
+            signals.append(("high", over_prefix, nutrient, render_params))
         elif ratio >= rules["over_application_ratio_medium"]:
-            signals.append(("medium", "over_application", nutrient, render_params))
+            signals.append(("medium", over_prefix, nutrient, render_params))
 
         nb_soil_rating = nutrient_balance[nutrient].get("soil_rating")
         if nb_soil_rating == "low" and ratio < rules["under_application_ratio"]:
@@ -84,10 +94,12 @@ def _compute_risk(applied_kg_ha: dict[str, float], nutrient_balance: dict, soil:
     low_nutrients = [n for n in ("n", "p", "k") if ratios[n] < rules["under_application_ratio"]]
     if high_nutrients and low_nutrients:
         high_n, low_n = high_nutrients[0], low_nutrients[0]
-        signals.append(("high", "imbalance", None, {
-            "high_nutrient_label": _NUTRIENT_LABEL[high_n], "high_ratio_pct": round(ratios[high_n] * 100),
-            "low_nutrient_label": _NUTRIENT_LABEL[low_n], "low_ratio_pct": round(ratios[low_n] * 100),
-        }))
+        imbalance_params = {
+            "high_nutrient_label": _NUTRIENT_LABEL[high_n], "high_ratio_pct": _pct(ratios[high_n]),
+            "low_nutrient_label": _NUTRIENT_LABEL[low_n], "low_ratio_pct": _pct(ratios[low_n]),
+        }
+        prefix = "imbalance_no_need" if math.isinf(ratios[high_n]) else "imbalance"
+        signals.append(("high", prefix, None, imbalance_params))
 
     oc_rating = soil_rating(tables, "organic_carbon", soil["organic_carbon"])
     if oc_rating == "low":
@@ -118,6 +130,7 @@ def _compute_risk(applied_kg_ha: dict[str, float], nutrient_balance: dict, soil:
     over_application_pct = None
     if prefix == "over_application":
         over_application_pct = round((ratios[nutrient_key] - 1) * 100, 1)
+    # over_application_no_need leaves it None: there is no percentage over a need of zero.
 
     return {
         "level": level,

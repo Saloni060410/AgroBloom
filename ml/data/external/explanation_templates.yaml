@@ -25,6 +25,16 @@ risk.over_application.yield_impact:
   en: "Extra fertilizer beyond what the crop can use adds cost without adding yield -- money spent for no extra grain."
   hi: "फसल की जरूरत से अधिक उर्वरक डालने पर उपज बढ़े बिना ही लागत बढ़ जाती है -- अतिरिक्त अनाज के बिना पैसा खर्च होता है।"
 
+risk.over_application_no_need.reason:
+  en: "Applied {nutrient_label} is {applied} kg/ha, but the crop needs none of it right now."
+  hi: "लगाया गया {nutrient_label} {applied} किग्रा/हेक्टेयर है, जबकि फसल को अभी इसकी आवश्यकता नहीं है।"
+risk.over_application_no_need.soil_health_impact:
+  en: "A nutrient applied when the crop does not need it is not taken up and can build up in the soil or wash out of it."
+  hi: "जिस पोषक तत्व की फसल को जरूरत नहीं है, उसे डालने पर वह पौधे द्वारा अवशोषित नहीं होता और मिट्टी में जमा हो सकता है या बह सकता है।"
+risk.over_application_no_need.yield_impact:
+  en: "Extra fertilizer beyond what the crop can use adds cost without adding yield -- money spent for no extra grain."
+  hi: "फसल की जरूरत से अधिक उर्वरक डालने पर उपज बढ़े बिना ही लागत बढ़ जाती है -- अतिरिक्त अनाज के बिना पैसा खर्च होता है।"
+
 risk.under_application.reason:
   en: "Soil {nutrient_label} tests low, and only {applied} kg/ha was applied against the {needed} kg/ha needed ({ratio_pct}%)."
   hi: "मिट्टी में {nutrient_label} की मात्रा कम है, और आवश्यक {needed} किग्रा/हेक्टेयर के मुकाबले केवल {applied} किग्रा/हेक्टेयर ({ratio_pct}%) डाला गया।"
@@ -42,6 +52,16 @@ risk.imbalance.soil_health_impact:
   en: "An imbalanced nutrient supply can interfere with how efficiently the crop takes up the nutrients that are already short."
   hi: "असंतुलित पोषक तत्व आपूर्ति उन पोषक तत्वों के अवशोषण की क्षमता को प्रभावित कर सकती है जिनकी पहले से ही कमी है।"
 risk.imbalance.yield_impact:
+  en: "Yield is often limited by the scarcest nutrient, not the most abundant one -- the surplus nutrient doesn't compensate for the shortfall."
+  hi: "उपज अक्सर सबसे कम पोषक तत्व से सीमित होती है, सबसे अधिक वाले से नहीं -- अतिरिक्त पोषक तत्व कमी की भरपाई नहीं करता।"
+
+risk.imbalance_no_need.reason:
+  en: "{high_nutrient_label} was applied although the crop needs none of it, while {low_nutrient_label} is well below what's needed ({low_ratio_pct}%)."
+  hi: "फसल को {high_nutrient_label} की आवश्यकता नहीं होने पर भी इसे डाला गया, जबकि {low_nutrient_label} आवश्यकता से कहीं कम ({low_ratio_pct}%) है।"
+risk.imbalance_no_need.soil_health_impact:
+  en: "An imbalanced nutrient supply can interfere with how efficiently the crop takes up the nutrients that are already short."
+  hi: "असंतुलित पोषक तत्व आपूर्ति उन पोषक तत्वों के अवशोषण की क्षमता को प्रभावित कर सकती है जिनकी पहले से ही कमी है।"
+risk.imbalance_no_need.yield_impact:
   en: "Yield is often limited by the scarcest nutrient, not the most abundant one -- the surplus nutrient doesn't compensate for the shortfall."
   hi: "उपज अक्सर सबसे कम पोषक तत्व से सीमित होती है, सबसे अधिक वाले से नहीं -- अतिरिक्त पोषक तत्व कमी की भरपाई नहीं करता।"
 
