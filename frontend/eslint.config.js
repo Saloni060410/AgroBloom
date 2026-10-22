@@ -4,7 +4,8 @@ import react from 'eslint-plugin-react'
 import reactHooks from 'eslint-plugin-react-hooks'
 
 export default [
-  { ignores: ['dist', 'lint_results.json'] },
+  // public/ocr is the OCR engine and language data copied there by scripts/copy-ocr-assets.mjs.
+  { ignores: ['dist', 'lint_results.json', 'public/ocr'] },
   js.configs.recommended,
   {
     files: ['**/*.{js,jsx}'],
@@ -45,7 +46,8 @@ export default [
     },
   },
   {
-    files: ['*.config.js'],
-    languageOptions: { globals: globals.node },
+    files: ['*.config.js', 'scripts/**/*.mjs', 'tests/**/*.mjs'],
+    languageOptions: { ecmaVersion: 'latest', sourceType: 'module', globals: globals.node },
+    rules: { 'no-console': 'off' },
   },
 ]
