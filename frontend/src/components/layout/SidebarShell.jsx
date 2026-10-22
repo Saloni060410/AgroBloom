@@ -8,7 +8,6 @@ import UserMenu from './UserMenu.jsx'
 import { useActiveField } from '../../hooks/useActiveField.js'
 import { useFieldStatusSync } from '../../hooks/useFieldStatusSync.js'
 import { useFieldStatusStore } from '../../store/useFieldStatusStore.js'
-import { doseText } from '../../utils/schedule.js'
 import SoilTestPrompt from '../soil/SoilTestPrompt.jsx'
 
 // My Fields also owns the pages you reach from a field card: its overview, plan and risk check.
@@ -20,9 +19,10 @@ function useSidebarItems(pathname) {
   const byField = useFieldStatusStore((s) => s.byField)
 
   // Fields with doses due or overdue, most urgent first (the one waiting longest, then the soonest).
+  // Only used to point the Schedule item at the field that needs it; the list itself is on that page.
   const pendingFields = plots
     .filter(({ field }) => byField[field.id]?.dueCount > 0)
-    .map(({ field }) => ({ id: field.id, name: field.name, status: byField[field.id], text: doseText(byField[field.id]) }))
+    .map(({ field }) => ({ id: field.id, status: byField[field.id] }))
     .sort((a, b) => a.status.due[0].days - b.status.due[0].days)
 
   const items = [
@@ -39,56 +39,16 @@ function useSidebarItems(pathname) {
       badgeLabel: alerts.count
         ? `${alerts.count} dose${alerts.count === 1 ? '' : 's'} due${alerts.overdue ? `, ${alerts.overdue} overdue` : ' within 7 days'}`
         : null,
-      pendingFields,
     },
     { to: fieldPath('/history'), label: 'History', icon: History, active: pathname.endsWith('/history') },
   ]
   return items
 }
 
-const MAX_LISTED = 3
-
-/** Red notification rows under the Schedule item: one per field with pending doses, each opening that field's schedule. */
-function PendingList({ fields, currentPath }) {
-  const shown = fields.slice(0, MAX_LISTED)
-  const more = fields.length - shown.length
-  return (
-    <ul className="mt-1.5 flex flex-col gap-1.5 px-1" aria-label={`Fields with pending doses, ${fields.length}`}>
-      {shown.map((f) => {
-        const to = `/fields/${f.id}/schedule`
-        return (
-          <li key={f.id}>
-            <Link
-              to={to}
-              aria-current={currentPath === to ? 'page' : undefined}
-              className={`flex items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs leading-tight text-white bg-risk-high-text hover:brightness-110 transition ${
-                currentPath === to ? 'ring-2 ring-white/70' : ''
-              }`}
-            >
-              <span className="w-2 h-2 rounded-full bg-white shrink-0" aria-hidden="true" />
-              <span className="min-w-0">
-                <span className="block font-semibold truncate">{f.name}</span>
-                <span className="block text-white/85">{f.text}</span>
-              </span>
-            </Link>
-          </li>
-        )
-      })}
-      {more > 0 && (
-        <li>
-          <Link to="/overview" className="block rounded-lg px-2.5 py-1.5 text-center text-xs font-semibold text-white/90 border border-white/25 hover:bg-white/10">
-            +{more} more field{more === 1 ? '' : 's'} with pending doses
-          </Link>
-        </li>
-      )}
-    </ul>
-  )
-}
-
-function NavItems({ items, currentPath }) {
+function NavItems({ items }) {
   return (
     <ul className="flex flex-col gap-1.5">
-      {items.map(({ to, label, icon: Icon, active, badge, badgeLabel, pendingFields }) => (
+      {items.map(({ to, label, icon: Icon, active, badge, badgeLabel }) => (
         <li key={label}>
           <Link
             to={to}
@@ -116,7 +76,6 @@ function NavItems({ items, currentPath }) {
             <span>{label}</span>
             {badgeLabel && <span className="sr-only">{badgeLabel}</span>}
           </Link>
-          {pendingFields?.length > 0 && <PendingList fields={pendingFields} currentPath={currentPath} />}
         </li>
       ))}
     </ul>
@@ -161,7 +120,7 @@ export default function SidebarShell() {
           <span className="text-xl font-semibold text-white tracking-tight">{BRAND.name}</span>
         </div>
         <nav aria-label="App" className="flex-1 overflow-y-auto px-3">
-          <NavItems items={items} currentPath={pathname} />
+          <NavItems items={items} />
         </nav>
         <div className="p-4 border-t border-white/10">
           <UserMenu dark />
@@ -187,7 +146,7 @@ export default function SidebarShell() {
 
       <Drawer open={open} onClose={() => setOpen(false)} title="Menu" dark>
         <nav aria-label="Mobile app">
-          <NavItems items={items} currentPath={pathname} />
+          <NavItems items={items} />
         </nav>
         <div className="mt-6 pt-4 border-t border-white/10 px-2">
           <UserMenu dark />

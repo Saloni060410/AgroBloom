@@ -10,6 +10,7 @@ import { matchLogsToLines, notifyScheduleChanged, lineKey, saveLineHint } from '
 import UndoToasts from '../components/ui/UndoToasts.jsx'
 import ProductIcon from '../components/reco/ProductIcon.jsx'
 import PlotSwitcher from '../components/layout/PlotSwitcher.jsx'
+import PendingSchedulePanel from '../components/layout/PendingSchedulePanel.jsx'
 import { BRAND } from '../components/brand/brand.js'
 
 // There is no execution log for a plan line, only the plan and the real fertilizer logs. Status is
@@ -193,6 +194,8 @@ export default function Schedule() {
           </Link>
         </div>
       </div>
+
+      <PendingSchedulePanel currentFieldId={fieldId} />
 
       {h.status === 'error' && (
         <div role="alert" className="p-4 rounded-md bg-risk-high-bg border border-risk-high-border text-risk-high-text text-sm flex justify-between gap-3">
