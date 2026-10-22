@@ -207,7 +207,7 @@ Requires auth + farm ownership. `POST` body (all but `name` optional):
 reference service itself is down, field creation is not blocked on it** (the check is skipped,
 not failed). `GET`: paginated `Field[]`, same shape.
 
-## `GET /fields/:id` · `PATCH /fields/:id`
+## `GET /fields/:id` · `PATCH /fields/:id` · `DELETE /fields/:id`
 
 Requires auth + ownership (via the field's farm). `PATCH` accepts the same optional fields as
 field creation (minus `name`/`pincode`) → **200**, updated `Field`. **Verified, not previously
@@ -220,6 +220,11 @@ documented:** `GET /fields/:id` embeds the parent `farm` object too —
 }
 ```
 `PATCH`'s response does **not** include `farm` — only `GET` does.
+
+`DELETE /fields/:id` removes one field with its soil tests, fertilizer logs and recommendations
+(**204**; **404** for someone else's field). The farm and its other fields stay. A farm holds one
+field per crop grown on it: to grow a second crop, `POST /farms/:farmId/fields` again with the other
+`cropType`. Each field keeps its own sowing date, growth stage, logs and plan.
 
 ## `GET /geocode?q=<place name>`
 
