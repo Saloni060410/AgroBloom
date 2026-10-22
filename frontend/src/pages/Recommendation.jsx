@@ -33,10 +33,13 @@ export default function Recommendation() {
   const soilState = useFieldStatusStore((s) => s.byField[fieldId]?.soilState)
   const showSoilPrompt = useSoilPromptStore((s) => s.show)
   const needsTest = soilState?.state === 'missing' || soilState?.state === 'stale'
-  const prompted = useRef(new Set())
+  const lastPrompted = useRef(null)
   useEffect(() => {
-    if (needsTest && !prompted.current.has(fieldId)) {
-      prompted.current.add(fieldId)
+    // Only a new or outdated field asks. Switching to it (or back to it) asks again; a field with a
+    // current test never does.
+    if (!needsTest) lastPrompted.current = null
+    else if (lastPrompted.current !== fieldId) {
+      lastPrompted.current = fieldId
       showSoilPrompt([fieldId])
     }
   }, [fieldId, needsTest, showSoilPrompt])
@@ -57,7 +60,7 @@ export default function Recommendation() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3 no-print">
         <h1 className="text-2xl sm:text-[2rem] font-bold text-primary-900 leading-tight">Fertilizer Recommendation &amp; Field History</h1>
-        <PlotSwitcher fieldId={fieldId} suffix="/recommendation" onlyTested />
+        <PlotSwitcher fieldId={fieldId} suffix="/recommendation" />
       </div>
       <div className="print-only text-lg font-semibold">{BRAND.name} &middot; {fieldName} &middot; Fertilizer summary</div>
 
