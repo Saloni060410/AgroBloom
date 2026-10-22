@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { ArrowRight, FlaskConical, CalendarDays, Sparkles, ShieldCheck, MapPin, Droplets, Loader2, Check } from 'lucide-react'
+import { ArrowRight, FlaskConical, CalendarDays, Sparkles, ShieldCheck, MapPin, Droplets, Loader2, Check, Plus } from 'lucide-react'
 import useDocumentTitle from '../hooks/useDocumentTitle.js'
 import { useFieldHistory } from '../hooks/useFieldHistory.js'
 import { fieldStatus } from '../utils/schedule.js'
@@ -12,6 +12,7 @@ import { formatDate, titleCase, capitalize, roundQty } from '../utils/format.js'
 import FieldScene from '../components/illustrations/FieldScene.jsx'
 import { RingGauge } from '../components/ui/Gauges.jsx'
 import PlotSwitcher from '../components/layout/PlotSwitcher.jsx'
+import AddCropModal from '../components/farms/AddCropModal.jsx'
 import WeatherCard from '../components/layout/WeatherCard.jsx'
 import { BRAND } from '../components/brand/brand.js'
 
@@ -40,6 +41,11 @@ export default function FieldProfile() {
   useDocumentTitle(`Field — ${BRAND.name}`)
   const h = useFieldHistory(fieldId)
   const updatePlot = usePlotStore((s) => s.updateField)
+  const plots = usePlotStore((s) => s.plots)
+  const [addCropOpen, setAddCropOpen] = useState(false)
+  const plot = plots.find((p) => String(p.field.id) === String(fieldId)) || null
+  // Other crops grown on this same farm.
+  const siblings = plot ? plots.filter((p) => String(p.farm.id) === String(plot.farm.id) && p.field.id !== plot.field.id) : []
 
   const field = h.field
   const crop = h.crops.find((c) => c.id === field?.cropType)
@@ -107,6 +113,18 @@ export default function FieldProfile() {
               <p className="mt-1 text-sm text-ink-muted inline-flex items-center gap-1.5">
                 <MapPin className="w-4 h-4" aria-hidden="true" /> {field.latitude.toFixed(3)}, {field.longitude.toFixed(3)}
               </p>
+            )}
+            {plot && (
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                {siblings.map(({ field: other }) => (
+                  <Link key={other.id} to={`/fields/${other.id}`} className="inline-flex items-center min-h-[36px] px-3.5 rounded-full bg-accent-maize text-ink-primary text-sm font-medium hover:underline">
+                    Also growing: {h.cropName(other.cropType)}
+                  </Link>
+                ))}
+                <button type="button" onClick={() => setAddCropOpen(true)} className="inline-flex items-center gap-1.5 min-h-[36px] px-3.5 rounded-full border border-dashed border-border-strong text-sm font-medium text-primary-700 hover:bg-primary-50 cursor-pointer transition-colors">
+                  <Plus className="w-4 h-4" aria-hidden="true" /> Add another crop
+                </button>
+              </div>
             )}
           </div>
           <div className="flex flex-wrap items-center gap-3">
@@ -206,6 +224,8 @@ export default function FieldProfile() {
           cta="Run a risk check"
         />
       </ul>
+
+      <AddCropModal isOpen={addCropOpen} onClose={() => setAddCropOpen(false)} plot={plot} />
     </div>
   )
 }

@@ -39,6 +39,8 @@ export const usePlotStore = create((set, get) => ({
   addPlot: (plot) => set((s) => ({ plots: [...s.plots, plot], status: 'ready' })),
   removeFarm: (farmId) =>
     set((s) => ({ plots: s.plots.filter((p) => String(p.farm.id) !== String(farmId)) })),
+  removeField: (fieldId) =>
+    set((s) => ({ plots: s.plots.filter((p) => String(p.field.id) !== String(fieldId)) })),
   updateField: (fieldId, patch) =>
     set((s) => ({
       plots: s.plots.map((p) =>

@@ -66,6 +66,11 @@ export async function getFieldById(fieldId) {
   return api.get(`/fields/${fieldId}`)
 }
 
+export async function deleteField(fieldId) {
+  if (isMock) return mockService.deleteField(fieldId)
+  return api.delete(`/fields/${fieldId}`)
+}
+
 export async function updateField(fieldId, data) {
   if (isMock) return mockService.updateField(fieldId, data)
   return api.patch(`/fields/${fieldId}`, data)

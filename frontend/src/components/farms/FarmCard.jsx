@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { Droplets, Sprout, FlaskConical, ArrowRight, Trash2, CalendarClock } from 'lucide-react'
+import { Droplets, Sprout, FlaskConical, ArrowRight, Trash2, CalendarClock, Plus } from 'lucide-react'
 import FieldScene from '../illustrations/FieldScene.jsx'
 import { RingGauge } from '../ui/Gauges.jsx'
 import { soilHealthScore, soilHealthBand, npkSummary } from '../../utils/soilHealth.js'
@@ -14,7 +14,7 @@ function dueText(days) {
 }
 
 /** One illustrated farmland card: photo, plot facts, soil health ring and the next dose. */
-export default function FarmCard({ plot, cropName, detail, ratings, onRemove, index }) {
+export default function FarmCard({ plot, cropName, siblings = [], detail, ratings, onRemove, onAddCrop, index }) {
   const { farm, field } = plot
   const soil = detail?.soil || null
   const score = soilHealthScore(soil, ratings)
@@ -38,7 +38,7 @@ export default function FarmCard({ plot, cropName, detail, ratings, onRemove, in
           {/* The link stretches over the whole card, so clicking anywhere opens the field. The
               buttons at the bottom sit above it (relative z-10) and keep their own actions. */}
           <Link to={`/fields/${field.id}`} className="after:absolute after:inset-0 after:rounded-lg focus-visible:after:ring-2 focus-visible:after:ring-primary-600 group-hover:underline">
-            {field.name} <span className="text-ink-muted font-normal no-underline">&middot;</span> {cropName}
+            {farm.name} <span className="text-ink-muted font-normal no-underline">&middot;</span> {cropName}
           </Link>
         </h2>
 
@@ -64,6 +64,21 @@ export default function FarmCard({ plot, cropName, detail, ratings, onRemove, in
             )}
             <div className="text-xs font-semibold -mt-1" style={{ color: band.color }}>{band.label}</div>
           </div>
+        </div>
+
+        <div className="relative z-10 mt-3 flex flex-wrap items-center gap-2">
+          {siblings.map((s) => (
+            <Link key={s.id} to={`/fields/${s.id}`} className="inline-flex items-center min-h-[32px] px-3 rounded-full bg-accent-maize text-ink-primary text-xs font-medium hover:underline">
+              Also growing: {s.cropName}
+            </Link>
+          ))}
+          <button
+            type="button"
+            onClick={() => onAddCrop?.(plot)}
+            className="inline-flex items-center gap-1 min-h-[32px] px-3 rounded-full border border-dashed border-border-strong text-xs font-medium text-primary-700 hover:bg-primary-50 cursor-pointer transition-colors"
+          >
+            <Plus className="w-3.5 h-3.5" aria-hidden="true" /> Add another crop
+          </button>
         </div>
       </div>
 
@@ -121,9 +136,9 @@ export default function FarmCard({ plot, cropName, detail, ratings, onRemove, in
         </Link>
         <button
           type="button"
-          onClick={() => onRemove(farm)}
-          aria-label={`Remove ${farm.name}`}
-          title="Remove this farm"
+          onClick={() => onRemove(plot)}
+          aria-label={siblings.length ? `Remove ${cropName} from ${farm.name}` : `Remove ${farm.name}`}
+          title={siblings.length ? `Remove ${cropName} from this farm` : 'Remove this farm'}
           className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center rounded-full text-ink-muted hover:text-risk-high-text hover:bg-risk-high-bg cursor-pointer transition-colors"
         >
           <Trash2 className="w-[18px] h-[18px]" aria-hidden="true" />

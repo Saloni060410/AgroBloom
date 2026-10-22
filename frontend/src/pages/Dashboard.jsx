@@ -7,6 +7,7 @@ import * as endpoints from '../services/endpoints.js'
 import FarmCard from '../components/farms/FarmCard.jsx'
 import { useSoilPromptStore } from '../store/useSoilPromptStore.js'
 import AddFarmModal from '../components/farms/AddFarmModal.jsx'
+import AddCropModal from '../components/farms/AddCropModal.jsx'
 import Modal from '../components/ui/Modal.jsx'
 import { AddFarmArt } from '../components/illustrations/SmallArt.jsx'
 import { BRAND } from '../components/brand/brand.js'
@@ -14,13 +15,14 @@ import { BRAND } from '../components/brand/brand.js'
 export default function Dashboard() {
   useDocumentTitle(`My Fields — ${BRAND.name}`)
   const showSoilPrompt = useSoilPromptStore((s) => s.show)
-  const { plots, status, loadPlots, addPlot, removeFarm } = usePlotStore()
+  const { plots, status, loadPlots, addPlot, removeFarm, removeField } = usePlotStore()
   const { deleteFarm } = useFarmStore()
   const { details, ratings } = usePlotDetails(plots)
 
   const [crops, setCrops] = useState([])
   const [isAddOpen, setIsAddOpen] = useState(false)
-  const [toRemove, setToRemove] = useState(null)
+  const [addCropTo, setAddCropTo] = useState(null)
+  const [toRemove, setToRemove] = useState(null) // the plot whose remove button was pressed
   const [removeError, setRemoveError] = useState(null)
   const [removing, setRemoving] = useState(false)
 
@@ -38,13 +40,25 @@ export default function Dashboard() {
     showSoilPrompt([plot.field.id])
   }
 
+  // Plots sharing a farm are crops grown on the same land.
+  const siblingsOf = (plot) =>
+    plots
+      .filter((p) => String(p.farm.id) === String(plot.farm.id) && p.field.id !== plot.field.id)
+      .map((p) => ({ id: p.field.id, cropName: cropName(p.field.cropType) }))
+  const removingOneCrop = Boolean(toRemove) && siblingsOf(toRemove).length > 0
+
   const confirmRemove = async () => {
     if (!toRemove) return
     setRemoving(true)
     setRemoveError(null)
     try {
-      await deleteFarm(toRemove.id)
-      removeFarm(toRemove.id)
+      if (removingOneCrop) {
+        await endpoints.deleteField(toRemove.field.id)
+        removeField(toRemove.field.id)
+      } else {
+        await deleteFarm(toRemove.farm.id)
+        removeFarm(toRemove.farm.id)
+      }
       setToRemove(null)
     } catch (err) {
       setRemoveError(err?.message || 'Could not remove this farm. Try again.')
@@ -92,11 +106,13 @@ export default function Dashboard() {
                 index={i}
                 plot={plot}
                 cropName={cropName(plot.field.cropType)}
+                siblings={siblingsOf(plot)}
                 detail={details[plot.field.id]}
                 ratings={ratings}
-                onRemove={(farm) => {
+                onAddCrop={setAddCropTo}
+                onRemove={(target) => {
                   setRemoveError(null)
-                  setToRemove(farm)
+                  setToRemove(target)
                 }}
               />
             ))}
@@ -117,15 +133,27 @@ export default function Dashboard() {
 
       <AddFarmModal isOpen={isAddOpen} onClose={() => setIsAddOpen(false)} onCreated={handleCreated} />
 
-      <Modal isOpen={Boolean(toRemove)} onClose={() => setToRemove(null)} title="Remove this farm?" description="This deletes the farm with its fields, soil tests, fertilizer logs and recommendations. It cannot be undone.">
+      <AddCropModal isOpen={Boolean(addCropTo)} onClose={() => setAddCropTo(null)} plot={addCropTo} />
+
+      <Modal
+        isOpen={Boolean(toRemove)}
+        onClose={() => setToRemove(null)}
+        title={removingOneCrop ? 'Remove this crop?' : 'Remove this farm?'}
+        description={
+          removingOneCrop
+            ? 'This deletes the crop with its soil tests, fertilizer logs and recommendations. The farm and its other crops stay. It cannot be undone.'
+            : 'This deletes the farm with its fields, soil tests, fertilizer logs and recommendations. It cannot be undone.'
+        }
+      >
         {removeError && <p role="alert" className="mb-3 text-sm text-risk-high-text">{removeError}</p>}
         <p className="text-sm text-ink-secondary">
-          You are about to remove <strong className="text-ink-primary">{toRemove?.name}</strong>.
+          You are about to remove{' '}
+          <strong className="text-ink-primary">{removingOneCrop ? `${cropName(toRemove.field.cropType)} from ${toRemove.farm.name}` : toRemove?.farm.name}</strong>.
         </p>
         <div className="mt-5 flex justify-end gap-3">
           <button type="button" onClick={() => setToRemove(null)} className="min-h-[44px] px-5 rounded-full hover:bg-bg-subtle font-medium cursor-pointer">Keep it</button>
           <button type="button" onClick={confirmRemove} disabled={removing} className="min-h-[44px] px-6 rounded-full bg-risk-high-text text-white font-medium disabled:opacity-60 cursor-pointer">
-            {removing ? 'Removing…' : 'Remove farm'}
+            {removing ? 'Removing…' : removingOneCrop ? 'Remove crop' : 'Remove farm'}
           </button>
         </div>
       </Modal>

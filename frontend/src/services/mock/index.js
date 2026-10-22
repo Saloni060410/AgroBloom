@@ -115,6 +115,11 @@ export const mockService = {
     }
   },
 
+  async deleteField(fieldId) {
+    await delay()
+    mockData.fields = mockData.fields.filter((f) => String(f.id) !== String(fieldId))
+  },
+
   async deleteFarm(farmId) {
     await delay()
     if (String(farmId) === 'FAIL_DELETE') {
