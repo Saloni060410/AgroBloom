@@ -3,6 +3,8 @@ import { useNavigate, useLocation, Link } from 'react-router-dom'
 import { AlertCircle, Eye, EyeOff, Mail, Lock } from 'lucide-react'
 import AuthLayout from '../../components/layout/AuthLayout.jsx'
 import { useUserStore } from '../../store/useUserStore.js'
+import AuthTabs from '../../components/layout/AuthTabs.jsx'
+import { DEMO_ACCOUNT } from '../../utils/demoAccount.js'
 import { BRAND } from '../../components/brand/brand.js'
 
 const LANGUAGES = [
@@ -10,8 +12,6 @@ const LANGUAGES = [
   { id: 'hi', label: 'Hindi', enabled: false },
   { id: 'mr', label: 'Marathi', enabled: false },
 ]
-
-const DEMO_FARMER = 'kisan@khetgpt.in'
 
 export default function Login() {
   const [formData, setFormData] = useState({ email: '', password: '' })
@@ -58,31 +58,11 @@ export default function Login() {
 
   return (
     <AuthLayout
-      title={`Log In to ${BRAND.name}`}
+      title={`Log in to ${BRAND.name}`}
+      subtitle="Welcome back. Log in to your fertilizer dashboard"
       footer={`${BRAND.name} © ${new Date().getFullYear()} · A research prototype, not extension advice`}
     >
-      {/* Login method tabs. Mobile OTP needs an SMS provider and a phone number on the account; neither exists yet. */}
-      <div role="tablist" aria-label="Login method" className="mt-6 grid grid-cols-2 border-b-2 border-border-default">
-        <button
-          type="button"
-          role="tab"
-          aria-selected="false"
-          aria-disabled="true"
-          disabled
-          title="Mobile OTP login is not available yet"
-          className="py-2.5 text-[15px] font-medium text-ink-muted cursor-not-allowed"
-        >
-          Mobile OTP <span className="ml-1 text-[10px] uppercase tracking-wide bg-bg-muted rounded-full px-1.5 py-0.5 align-middle">Soon</span>
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected="true"
-          className="py-2.5 text-[15px] font-semibold text-terracotta-600 border-b-[3px] border-terracotta-600 -mb-[2px]"
-        >
-          Password Login
-        </button>
-      </div>
+      <AuthTabs mode="login" state={location.state} />
 
       <form onSubmit={handleSubmit} noValidate className="mt-5 space-y-4">
         <fieldset>
@@ -182,16 +162,16 @@ export default function Login() {
 
         <button
           type="button"
-          onClick={() => setFormData({ email: DEMO_FARMER, password: 'password123' })}
+          onClick={() => setFormData({ ...DEMO_ACCOUNT })}
           className="w-full min-h-[48px] rounded-full bg-bg-muted hover:bg-border-default text-ink-primary text-base font-medium transition-colors cursor-pointer"
         >
           Fill demo farmer account
         </button>
 
         <p className="flex flex-wrap items-center justify-between gap-2 text-sm pt-1">
-          <span className="font-medium text-ink-primary">New here?</span>
-          <Link to="/register" className="font-semibold text-primary-600 hover:underline">
-            Register New Farmer
+          <span className="font-medium text-ink-primary">New customer?</span>
+          <Link to="/register" state={location.state} className="font-semibold text-primary-600 hover:underline">
+            Create an account
           </Link>
         </p>
       </form>

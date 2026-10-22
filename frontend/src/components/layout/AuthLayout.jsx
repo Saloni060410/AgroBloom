@@ -7,7 +7,7 @@ import { BRAND } from '../brand/brand.js'
  * Kraft-paper backdrop with the split card: illustrated welcome on the left, the form card on
  * the right. Used by Login and Register.
  */
-export default function AuthLayout({ title, pageTitle, children, footer }) {
+export default function AuthLayout({ title, pageTitle, subtitle = 'Log in to your agricultural fertilizer dashboard', children, footer }) {
   useDocumentTitle(pageTitle || `${title} — ${BRAND.name}`)
   return (
     <div className="bg-kraft-paper min-h-screen px-3 py-4 sm:px-8 sm:py-10 flex items-center justify-center">
@@ -22,7 +22,7 @@ export default function AuthLayout({ title, pageTitle, children, footer }) {
               {BRAND.name}
             </Link>
             <p className="mt-3 text-xl sm:text-2xl font-semibold text-ink-primary">{BRAND.tagline}</p>
-            <p className="mt-2 text-ink-secondary">Log in to your agricultural fertilizer dashboard</p>
+            <p className="mt-2 text-ink-secondary">{subtitle}</p>
           </div>
           <GreenhouseScene className="absolute inset-0 w-full h-full hidden sm:block" />
         </section>

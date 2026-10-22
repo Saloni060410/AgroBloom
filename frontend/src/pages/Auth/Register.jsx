@@ -3,6 +3,7 @@ import { useNavigate, useLocation, Link } from 'react-router-dom'
 import { AlertCircle, Eye, EyeOff, Mail, Lock, User, Sprout, Briefcase } from 'lucide-react'
 import AuthLayout from '../../components/layout/AuthLayout.jsx'
 import { useUserStore } from '../../store/useUserStore.js'
+import AuthTabs from '../../components/layout/AuthTabs.jsx'
 import { BRAND } from '../../components/brand/brand.js'
 
 const ROLES = [
@@ -98,11 +99,14 @@ export default function Register() {
 
   return (
     <AuthLayout
-      title="Register New Farmer"
+      title={`Sign up for ${BRAND.name}`}
+      subtitle="New here? Create an account to plan fertilizer for your fields"
       pageTitle={`Create your account — ${BRAND.name}`}
       footer={`${BRAND.name} © ${new Date().getFullYear()} · A research prototype, not extension advice`}
     >
-      <form onSubmit={handleSubmit} noValidate className="mt-6 space-y-4">
+      <AuthTabs mode="register" state={location.state} />
+
+      <form onSubmit={handleSubmit} noValidate className="mt-5 space-y-4">
         {apiError && (
           <div role="alert" className="p-3 rounded-md border border-risk-high-border bg-risk-high-bg text-risk-high-text flex items-start gap-2 text-sm">
             <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" aria-hidden="true" />
@@ -149,7 +153,7 @@ export default function Register() {
 
         <p className="flex flex-wrap items-center justify-between gap-2 text-sm pt-1">
           <span className="font-medium text-ink-primary">Already registered?</span>
-          <Link to="/login" className="font-semibold text-primary-600 hover:underline">
+          <Link to="/login" state={location.state} className="font-semibold text-primary-600 hover:underline">
             Log in
           </Link>
         </p>
