@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { Sparkles, Loader2, AlertCircle, ChevronDown, Plus, Info } from 'lucide-react'
+import { Sparkles, Loader2, AlertCircle, Plus, Info } from 'lucide-react'
 import useDocumentTitle from '../hooks/useDocumentTitle.js'
 import * as endpoints from '../services/endpoints.js'
 import { useRecommendationStore } from '../store/useRecommendationStore.js'
@@ -13,7 +13,7 @@ import CropCard, { CropTile } from '../components/soil/CropCard.jsx'
 import ParamDial from '../components/soil/ParamDial.jsx'
 import ReportScanner from '../components/soil/ReportScanner.jsx'
 import FieldScene from '../components/illustrations/FieldScene.jsx'
-import PlotOptions from '../components/layout/PlotOptions.jsx'
+import PlotPicker from '../components/layout/PlotPicker.jsx'
 import { BRAND } from '../components/brand/brand.js'
 
 const LOW = '#c9683f'
@@ -191,25 +191,23 @@ export default function SoilInput() {
       {/* Active field band */}
       <div className="bg-primary-600 text-white rounded-lg shadow-md">
         <div className="px-5 sm:px-8 py-6">
-          <label htmlFor="active-field" className="text-sm font-semibold uppercase tracking-wider">
+          <p className="text-sm font-semibold uppercase tracking-wider">
             Select your active field:
-          </label>
-          <div className="mt-2 flex items-stretch max-w-xl bg-white rounded-md overflow-hidden text-ink-primary shadow-md">
-            <div className="w-16 shrink-0 bg-bg-muted">
+          </p>
+          <div className="mt-2 flex items-stretch max-w-xl bg-white rounded-md text-ink-primary shadow-md">
+            <div className="w-16 shrink-0 bg-bg-muted rounded-l-md overflow-hidden">
               <FieldScene crop={field?.cropType || 'wheat'} seed={5} className="w-full h-full" />
             </div>
-            <div className="relative flex-1">
-              <select
-                id="active-field"
-                value={fieldId}
-                onChange={(e) => navigate(`/fields/${e.target.value}/soil`)}
-                className="w-full min-h-[52px] pl-4 pr-10 appearance-none bg-transparent text-base font-medium focus:outline-none cursor-pointer"
-              >
-                <PlotOptions plots={plots} note={(id) => (statusByField[id]?.pendingCount ? ` \u00b7 ${statusByField[id].pendingCount} pending` : '')} />
-                {!plots.some((p) => p.field.id === fieldId) && <option value={fieldId}>{field?.name || 'This field'}</option>}
-              </select>
-              <ChevronDown className="w-5 h-5 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" aria-hidden="true" />
-            </div>
+            <PlotPicker
+              plots={plots}
+              value={fieldId}
+              onChange={(id) => navigate(`/fields/${id}/soil`)}
+              notesFor={(id) => (statusByField[id]?.pendingCount ? [{ text: `${statusByField[id].pendingCount} pending`, tone: 'red' }] : [])}
+              label="Field for this soil test"
+              fallbackLabel={field?.name || 'This field'}
+              className="flex-1 min-w-0 !block"
+              triggerClassName="w-full min-h-[52px] !rounded-none !border-0 bg-transparent text-base"
+            />
           </div>
         </div>
       </div>

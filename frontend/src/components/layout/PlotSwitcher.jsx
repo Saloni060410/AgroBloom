@@ -1,11 +1,10 @@
 import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ChevronDown } from 'lucide-react'
 import { usePlotStore } from '../../store/usePlotStore.js'
 import { useFieldStatusStore } from '../../store/useFieldStatusStore.js'
-import PlotOptions from './PlotOptions.jsx'
+import PlotPicker from './PlotPicker.jsx'
 
-/** Compact "which field am I looking at" select. suffix is the page path after /fields/:id. */
+/** Compact "which field am I looking at" dropdown. suffix is the page path after /fields/:id. */
 export default function PlotSwitcher({ fieldId, suffix = '', className = '' }) {
   const navigate = useNavigate()
   const { plots, loadPlots } = usePlotStore()
@@ -17,29 +16,24 @@ export default function PlotSwitcher({ fieldId, suffix = '', className = '' }) {
 
   if (plots.length < 2) return null
 
-  // Every field is listed. The ones needing attention say so, since a native select cannot hold a tag.
-  const notes = (id) => {
+  // Every field is listed. The ones needing attention carry a tag.
+  const notesFor = (id) => {
     const s = byField[id]
-    if (!s) return ''
-    const parts = []
-    if (s.soilState?.state === 'missing') parts.push('needs soil test')
-    else if (s.soilState?.state === 'stale') parts.push('retest due')
-    if (s.dueCount) parts.push(`${s.dueCount} dose${s.dueCount === 1 ? '' : 's'} due`)
-    return parts.length ? ` \u00b7 ${parts.join(' \u00b7 ')}` : ''
+    if (!s) return []
+    const tags = []
+    if (s.soilState?.state === 'missing') tags.push({ text: 'Needs soil test', tone: 'amber' })
+    else if (s.soilState?.state === 'stale') tags.push({ text: 'Retest due', tone: 'amber' })
+    if (s.dueCount) tags.push({ text: `${s.dueCount} dose${s.dueCount === 1 ? '' : 's'} due`, tone: 'red' })
+    return tags
   }
 
   return (
-    <div className={`relative inline-block ${className}`}>
-      <label htmlFor="plot-switcher" className="sr-only">Switch field</label>
-      <select
-        id="plot-switcher"
-        value={fieldId}
-        onChange={(e) => navigate(`/fields/${e.target.value}${suffix}`)}
-        className="appearance-none min-h-[44px] pl-4 pr-10 rounded-full border-2 border-border-default hover:border-border-strong bg-white text-sm font-medium text-ink-primary cursor-pointer focus:outline-none focus:border-primary-600"
-      >
-        <PlotOptions plots={plots} note={notes} />
-      </select>
-      <ChevronDown className="w-4 h-4 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-ink-muted" aria-hidden="true" />
-    </div>
+    <PlotPicker
+      plots={plots}
+      value={fieldId}
+      onChange={(id) => navigate(`/fields/${id}${suffix}`)}
+      notesFor={notesFor}
+      className={className}
+    />
   )
 }
