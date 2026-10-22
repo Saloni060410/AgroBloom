@@ -2,12 +2,16 @@ import express from 'express'
 import cors from 'cors'
 import helmet from 'helmet'
 import rateLimit from 'express-rate-limit'
-import { CORS_ORIGINS } from './config/env.js'
+import { CORS_ORIGINS, env } from './config/env.js'
 import routes from './routes/index.js'
 import { errorHandler, notFound } from './middleware/error.middleware.js'
 import { requestId, structuredLogging } from './middleware/logging.middleware.js'
 
 const app = express()
+
+// Behind a host's load balancer every request arrives from the proxy's address. Trusting one hop
+// makes req.ip (and so the rate limiter) the real client, not one shared bucket for everybody.
+if (env.NODE_ENV === 'production') app.set('trust proxy', 1)
 
 app.use(helmet())
 app.use(
