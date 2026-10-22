@@ -250,3 +250,76 @@
   from { width: 100%; }
   to { width: 0; }
 }
+
+/* Opening scene (components/intro). The drive and the cut share one clock, so the cutter edge and
+   the edge of the harvested field stay together. Durations are mirrored in FarmIntro.jsx. */
+.intro-root {
+  --intro-delay: 1.4s;
+  --intro-drive: 5.6s;
+}
+@keyframes introDrive {
+  from { transform: translateX(-520px); }
+  to { transform: translateX(1700px); }
+}
+@keyframes introCut {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+@keyframes introSpin { to { transform: rotate(360deg); } }
+@keyframes introBob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+@keyframes introWave {
+  0%, 100% { transform: rotate(-128deg); }
+  50% { transform: rotate(-158deg); }
+}
+@keyframes introSway {
+  from { transform: skewX(-1.6deg); }
+  to { transform: skewX(1.6deg); }
+}
+@keyframes introSmoke {
+  from { transform: translateY(0) scale(.6); opacity: .8; }
+  to { transform: translateY(-70px) scale(1.7); opacity: 0; }
+}
+@keyframes introChaff {
+  from { transform: translate(0, 0); opacity: 1; }
+  to { transform: translate(-40px, -80px); opacity: 0; }
+}
+@keyframes introCloud { to { transform: translateX(160px); } }
+@keyframes introGraze {
+  0%, 100% { transform: rotate(0deg); }
+  50% { transform: rotate(14deg); }
+}
+@keyframes introBreathe {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+@keyframes introBlink {
+  0%, 92%, 100% { transform: scaleY(1); }
+  96% { transform: scaleY(.1); }
+}
+@keyframes introFade { from { opacity: 0; } to { opacity: 1; } }
+
+.intro-root .intro-drive {
+  animation: introDrive var(--intro-drive) linear var(--intro-delay) both;
+}
+.intro-root .intro-cut {
+  animation: introCut var(--intro-drive) linear var(--intro-delay) both;
+}
+.intro-root .intro-spin { animation: introSpin 1s linear infinite; }
+.intro-root .intro-reel { animation: introSpin 1.2s linear infinite; }
+.intro-root .intro-bob { animation: introBob .45s ease-in-out infinite; }
+.intro-root .intro-wave { animation: introWave 1.1s ease-in-out infinite; }
+.intro-root .intro-sway { animation: introSway 2.8s ease-in-out infinite alternate; }
+.intro-root .intro-smoke { animation: introSmoke 2.6s ease-out infinite; }
+.intro-root .intro-chaff { animation: introChaff 1.4s ease-out infinite; }
+.intro-root .intro-cloud { animation: introCloud 70s linear infinite alternate; }
+.intro-root .intro-graze { animation: introGraze 4.2s ease-in-out infinite; }
+.intro-root .intro-breathe { animation: introBreathe 2.6s ease-in-out infinite; }
+.intro-root .intro-blink {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: introBlink 4s ease-in-out infinite;
+}
+.intro-root .intro-fade { animation: introFade .8s ease-out .3s both; }
