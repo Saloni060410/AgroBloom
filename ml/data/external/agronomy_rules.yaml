@@ -46,3 +46,55 @@ formula_tolerance_pct: 10
   # team assumption -- placeholder. Percent tolerance band used by the sanity test /
   # evaluation.formula_conformity() to count a computed recommendation as consistent with
   # the reference_doses.csv + soil_adjustments.csv + nutrient_efficiency.csv formula output.
+
+# --- History rules (rainfall, earlier soil tests, crop stage). Added with the history work; every
+# value below is a team assumption pending agronomist sign-off, in line with the keys above. None of
+# them changes a published dose: they decide how much past fertilizer is credited, when top-dressing
+# is held, and which earlier-test observations are worth telling the farmer.
+
+credit_window_pk_uses_season: true
+  # team assumption. Phosphorus and potassium applied to a crop stay in the soil (they are not
+  # washed out the way nitrogen is), so they are credited for the crop's whole season where a sourced
+  # season length exists (feature_engineering.season_length_days: wheat, barley), and for
+  # credit_window_days otherwise. Nitrogen always uses credit_window_days. Set to false to give every
+  # nutrient the flat credit_window_days.
+
+rain_loss_mm: 20
+  # team assumption -- placeholder, same value as rain_hold_mm. Rain (mm) in the rain_loss_days after
+  # a nitrogen application at or above which part of that nitrogen is taken to have washed out.
+  # Needs daily rainfall history from the backend (rainfall_history); without it nothing is reduced.
+
+rain_loss_days: 3
+  # team assumption. Days from the day of application (inclusive) over which that rain is summed.
+
+rain_loss_credit_factor: 0.5
+  # team assumption -- the least well supported number here. Multiplier on the nitrogen credit of an
+  # application followed by rain_loss_mm within rain_loss_days. The practice is qualitative in the PAU
+  # package (do not top-dress before heavy rain); the 0.5 itself is not sourced. Every reduction is
+  # shown to the farmer as a note, never applied silently.
+
+recent_rain_hold_days: 2
+  # team assumption. If rain_hold_mm or more actually fell in the last this-many days, nitrogen
+  # top-dressing is held as it is for forecast rain (saturated soil loses nitrogen the same way).
+
+soil_jump_ratio: 2.0
+  # team assumption. A nitrogen, phosphorus or potassium reading at least this many times higher (or
+  # this fraction lower, i.e. 1/2.0) than the previous soil test is flagged as a possible misread,
+  # because soil nutrients do not move that fast between tests. A data-quality warning only.
+
+soil_jump_ph: 1.0
+  # team assumption. A pH change of at least this many units since the previous test is flagged.
+
+soil_jump_oc: 0.3
+  # team assumption. An organic carbon change of at least this many percentage points since the
+  # previous test is flagged.
+
+soil_jump_days: 400
+  # team assumption. Only a previous test newer than this many days is compared for jumps.
+
+oc_trend_min_tests: 3
+  # team assumption. Tests needed (including the latest) before an organic carbon trend is reported.
+
+oc_trend_drop: 0.05
+  # team assumption. Organic carbon fall (percentage points) from the oldest to the latest of those
+  # tests, with no rise in between, that is reported as "falling".

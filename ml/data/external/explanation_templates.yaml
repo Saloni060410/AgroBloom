@@ -150,3 +150,17 @@ rule.product_choice.pred_contribs:
 rule.product_choice.feature_importance:
   en: "Across its training data, the model's single most influential input for product choice is {feature_label} -- for this field, that value is {feature_value}."
   hi: "अपने प्रशिक्षण डेटा में, उत्पाद चयन के लिए मॉडल का सबसे प्रभावशाली इनपुट {feature_label} है -- इस खेत के लिए, वह मान {feature_value} है।"
+
+# --- What a field's earlier soil tests say (engine/history.py) ---
+history.soil_jump:
+  en: "{label} reads {now} {unit} now, against {before} {unit} on {date}. That is a big change for soil in a short time, so check the report before relying on this plan."
+  hi: "{label} अब {now} {unit} है, जबकि {date} को यह {before} {unit} था। मिट्टी में इतने कम समय में इतना बड़ा बदलाव कम ही होता है, इसलिए इस योजना पर भरोसा करने से पहले रिपोर्ट दोबारा जाँच लें।"
+history.rating_dropped:
+  en: "{label} has dropped from {before_rating} to {now_rating} since your test on {date} ({before} to {now} {unit}). The plan uses the {now_rating} rating."
+  hi: "{date} की जाँच के बाद से {label} {before_rating} से घटकर {now_rating} हो गया है ({before} से {now} {unit})। योजना {now_rating} श्रेणी के अनुसार बनी है।"
+history.rating_improved:
+  en: "{label} has risen from {before_rating} to {now_rating} since your test on {date} ({before} to {now} {unit})."
+  hi: "{date} की जाँच के बाद से {label} {before_rating} से बढ़कर {now_rating} हो गया है ({before} से {now} {unit})।"
+history.oc_falling:
+  en: "Organic carbon has fallen from {first}% to {now}% across {n} tests since {date}. Farmyard manure or compost helps rebuild it."
+  hi: "{date} से {n} जाँचों में जैविक कार्बन {first}% से घटकर {now}% रह गया है। गोबर की खाद या कम्पोस्ट इसे फिर से बढ़ाने में मदद करती है।"

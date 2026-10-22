@@ -161,7 +161,14 @@ def _prior_credit(
     prior_usage: list[dict],
     today: date,
     credit_window_days: int,
+    rainfall_history: list[dict] | None = None,
+    rain_rules: dict | None = None,
 ) -> tuple[float, list[dict]]:
+    """Credit for earlier applications of `nutrient`. credit_window_days is the window for THIS
+    nutrient (the caller gives P and K the crop season when it can). For nitrogen only, an
+    application followed by heavy rain (rain_rules, from agronomy_rules.yaml) counts for less,
+    because part of that nitrogen is taken to have washed out; each reduction is traced so it can
+    be shown to the farmer."""
     products = _fertilizer_products(tables)
     trace: list[dict] = []
     raw_kg_ha = 0.0
@@ -182,7 +189,32 @@ def _prior_credit(
         pct = _parse_float(product[PCT_FIELD[nutrient]])
         if not pct:
             continue
-        raw_kg_ha += usage["quantity_kg_per_acre"] * (pct / 100) * ACRES_PER_HECTARE
+        contribution = usage["quantity_kg_per_acre"] * (pct / 100) * ACRES_PER_HECTARE
+
+        if nutrient == "n" and rainfall_history and rain_rules:
+            from src.engine.history import rain_after  # local: history imports the data pipeline
+
+            rain_mm, days_seen = rain_after(rainfall_history, applied_on, rain_rules["rain_loss_days"])
+            if days_seen > 0 and rain_mm >= rain_rules["rain_loss_mm"]:
+                contribution *= rain_rules["rain_loss_credit_factor"]
+                trace.append(
+                    {
+                        "rule_id": "n_credit_reduced_after_rain",
+                        "nutrient": "n",
+                        "value": rain_mm,
+                        "threshold": rain_rules["rain_loss_mm"],
+                        "effect": f"credit x{rain_rules['rain_loss_credit_factor']}",
+                        "params": {
+                            "product": usage["type"],
+                            "applied_on": applied_on.isoformat(),
+                            "rain_mm": round(rain_mm, 1),
+                            "days": rain_rules["rain_loss_days"],
+                            "factor": rain_rules["rain_loss_credit_factor"],
+                        },
+                    }
+                )
+
+        raw_kg_ha += contribution
 
     if ignored_products:
         trace.append(
@@ -237,8 +269,13 @@ def compute_balance(
     tables: ReferenceTables,
     today: date,
     credit_window_days: int | None = None,
+    pk_window_days: int | None = None,
+    rainfall_history: list[dict] | None = None,
+    rain_rules: dict | None = None,
 ) -> tuple[dict, list[dict]]:
-    """Returns (nutrient_balance, rule_trace). nutrient_balance has, per nutrient, method,
+    """Returns (nutrient_balance, rule_trace). pk_window_days, if given, replaces credit_window_days
+    for phosphorus and potassium (they stay in the soil for the crop's season); rainfall_history and
+    rain_rules, if given, let heavy rain after a nitrogen application reduce its credit. nutrient_balance has, per nutrient, method,
     soil_rating, standard_dose_kg_ha, soil_adjustment_kg_ha, prior_credit_kg_ha and
     fertilizer_needed_kg_ha (contract C1/C6). growth_stage is validated against the crop's
     growth_stages.csv (an unknown stage raises UnknownStageError) but does not otherwise enter
@@ -318,7 +355,10 @@ def compute_balance(
                     }
                 )
 
-        credit, credit_trace = _prior_credit(tables, crop_id, nutrient, prior_usage, today, credit_window_days)
+        window = credit_window_days if nutrient == "n" or pk_window_days is None else pk_window_days
+        credit, credit_trace = _prior_credit(
+            tables, crop_id, nutrient, prior_usage, today, window, rainfall_history, rain_rules
+        )
         trace.extend(credit_trace)
 
         needed = max(0.0, standard_dose + adjustment - credit)
@@ -389,6 +429,7 @@ def to_products(
     today: date,
     rain_hold_mm: float | None = None,
     rain_hold_days: int | None = None,
+    recent_rain_mm: float = 0.0,
 ) -> list[dict]:
     """Splits nutrient_balance's fertilizer_needed_kg_ha across the stages not yet passed
     (split_schedule.csv), dates each stage from growth_stages.csv das_start counted from
@@ -407,7 +448,8 @@ def to_products(
     ReferenceDataIncomplete -- that gap is structural, not a pricing gap.
 
     Nitrogen top-dressing (urea) is delayed by rain_hold_days when rainfall_mm_forecast is at
-    or above rain_hold_mm."""
+    or above rain_hold_mm, or when recent_rain_mm (rain that actually fell in the last few days)
+    is: saturated soil loses nitrogen the same way a coming downpour would make it."""
     rain_hold_mm = 20.0 if rain_hold_mm is None else rain_hold_mm
     rain_hold_days = 2 if rain_hold_days is None else rain_hold_days
     products = _fertilizer_products(tables)
@@ -489,11 +531,14 @@ def to_products(
             urea_product = urea_product or product_row("urea", "n")
             quantity = round(n_needed / ACRES_PER_HECTARE / (float(urea_product["n_pct"]) / 100), 3)
             apply_by, note = _stage_apply_by(tables, crop_id, line.stage, effective_sowing) if effective_sowing else (None, "At " + line.stage.replace("_", " "))
-            if weather.get("rainfall_mm_forecast") is not None and weather["rainfall_mm_forecast"] >= rain_hold_mm:
+            forecast_hold = weather.get("rainfall_mm_forecast") is not None and weather["rainfall_mm_forecast"] >= rain_hold_mm
+            recent_hold = recent_rain_mm >= rain_hold_mm
+            if forecast_hold or recent_hold:
+                reason = "forecast rain" if forecast_hold else "heavy rain in the last few days"
                 if apply_by is not None:
                     apply_by = apply_by + timedelta(days=rain_hold_days)
-                note = f"{note}, delayed {rain_hold_days} days for forecast rain" if note else (
-                    f"Delayed {rain_hold_days} days for forecast rain"
+                note = f"{note}, delayed {rain_hold_days} days for {reason}" if note else (
+                    f"Delayed {rain_hold_days} days for {reason}"
                 )
             schedule.append(_schedule_item(line.stage, "urea", quantity, apply_by, note))
 

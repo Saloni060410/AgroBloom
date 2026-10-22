@@ -42,7 +42,7 @@ from src.api.schemas import (
     RiskScoreResponse,
     ScheduleItem,
 )
-from src.data_pipeline.feature_engineering import build_features, request_to_record
+from src.data_pipeline.feature_engineering import build_features, request_to_record, season_length_days
 from src.data_pipeline.soil_data_loader import (
     EXTERNAL_DIR,
     ReferenceDataError,
@@ -52,7 +52,8 @@ from src.data_pipeline.soil_data_loader import (
 )
 from src.degradation.risk_analyzer import assess_recommendation, score_planned
 from src.engine.cost import compare_to_history, cost_breakdown, estimate_cost, prices_as_of
-from src.engine.npk_calculator import compute_balance, to_products
+from src.engine.history import recent_rain, soil_history_insights, stage_from_sowing
+from src.engine.npk_calculator import _stage_row, compute_balance, to_products
 
 try:  # R10 (explain, ranking rule_trace items with XGBoost pred_contribs) isn't built yet.
     from src.evaluation.explainability import explain as _richa_explain
@@ -210,10 +211,56 @@ def _unpriced_product_notes(schedule: list[dict], cost_breakdown_lines: list[dic
     ]
 
 
+def _pk_window_days(engine: Engine, crop_id: str) -> int | None:
+    """Credit window for phosphorus and potassium: the crop's season where one is sourced (they stay
+    in the soil), else the flat window. None when the rule is switched off."""
+    if not engine.rules.get("credit_window_pk_uses_season"):
+        return None
+    return season_length_days(engine.tables, crop_id) or engine.rules["credit_window_days"]
+
+
+def _effective_stage(engine: Engine, request: RecommendRequest, today: date) -> tuple[str, dict | None]:
+    """The stage to plan for. The stage saved on the field is whatever the farmer last set, so it is
+    usually behind; if the sowing date shows the crop has reached a LATER stage, that one is used.
+    A stage the farmer advanced themselves is never moved backwards. Returns (stage_id, trace)."""
+    _stage_row(engine.tables, request.crop_type, request.growth_stage)  # an unknown saved stage still raises -> 422
+    derived = stage_from_sowing(engine.tables, request.crop_type, request.sowing_date, today)
+    if derived is None:
+        return request.growth_stage, None
+    saved_order = int(_stage_row(engine.tables, request.crop_type, request.growth_stage)["order"])
+    if int(derived["order"]) <= saved_order:
+        return request.growth_stage, None
+    das = (today - request.sowing_date).days
+    return derived["stage_id"], {
+        "rule_id": "stage_advanced_from_sowing_date",
+        "nutrient": None,
+        "value": das,
+        "threshold": None,
+        "effect": f"stage {request.growth_stage} -> {derived['stage_id']}",
+        "params": {
+            "days_after_sowing": das,
+            "saved_stage": _stage_row(engine.tables, request.crop_type, request.growth_stage)["name_en"],
+            "used_stage": derived["name_en"],
+        },
+    }
+
+
 def _data_notes(rule_trace: list[dict], weather_source: str) -> list[str]:
     notes = []
     for entry in rule_trace:
-        if entry["rule_id"] == "credit_skipped_no_efficiency":
+        if entry["rule_id"] == "stage_advanced_from_sowing_date":
+            p = entry["params"]
+            notes.append(
+                f"The crop is {p['days_after_sowing']} days after sowing, so this plan is built for the "
+                f"{p['used_stage']} stage. The field was saved at {p['saved_stage']}."
+            )
+        elif entry["rule_id"] == "n_credit_reduced_after_rain":
+            p = entry["params"]
+            notes.append(
+                f"Nitrogen from the {p['product']} applied on {p['applied_on']} was credited at x{p['factor']}: "
+                f"{p['rain_mm']} mm of rain fell in the {p['days']} days after it, which can wash nitrogen out of the soil."
+            )
+        elif entry["rule_id"] == "credit_skipped_no_efficiency":
             notes.append(
                 f"No credit was given for last season's fertilizer because no use-efficiency "
                 f"figure is available for the {entry['nutrient'].upper()} nutrient."
@@ -241,28 +288,36 @@ def recommend(request: RecommendRequest, engine: Engine, today: date | None = No
     features = build_features([record], tables=engine.tables)
 
     previous_usage = payload["previous_fertilizer_usage"]
+    rainfall = payload["rainfall_history"]
+    stage_used, stage_trace = _effective_stage(engine, request, today)
     balance, rule_trace = compute_balance(
         request.crop_type,
         request.variety,
         request.irrigation,
-        request.growth_stage,
+        stage_used,
         payload["soil"],
         previous_usage,
         engine.tables,
         today,
         credit_window_days=engine.rules["credit_window_days"],
+        pk_window_days=_pk_window_days(engine, request.crop_type),
+        rainfall_history=rainfall,
+        rain_rules=engine.rules,
     )  # raises ReferenceDataIncomplete -> 503, UnknownStageError -> 422
+    if stage_trace:
+        rule_trace.append(stage_trace)
 
     schedule = to_products(
         balance,
         request.crop_type,
-        request.growth_stage,
+        stage_used,
         request.sowing_date,
         payload["weather"],
         engine.tables,
         today,
         rain_hold_mm=engine.rules["rain_hold_mm"],
         rain_hold_days=engine.rules["rain_hold_days"],
+        recent_rain_mm=recent_rain(rainfall, today, engine.rules["recent_rain_hold_days"]) if rainfall else 0.0,
     )  # raises ReferenceDataIncomplete -> 503 only if a needed product has no ROW at all;
     # an unpriced-but-known product (e.g. MOP, see cost.py) is still scheduled here.
 
@@ -303,6 +358,11 @@ def recommend(request: RecommendRequest, engine: Engine, today: date | None = No
         engine.rules, engine.tables, today=today,
     )
 
+    insights = soil_history_insights(
+        engine.tables, engine.rules, payload["soil"], request.soil_tested_on,
+        payload["previous_soil_tests"], today,
+    )
+
     return RecommendResponse(
         recommendation=Recommendation(
             fertilizer_type=primary_product,
@@ -314,8 +374,13 @@ def recommend(request: RecommendRequest, engine: Engine, today: date | None = No
             top_factors=top_factors,
             nutrient_balance=NutrientBalance(**balance),
             formula=FORMULA,
+            # The existing screens already show data_notes, so the history observations ride along
+            # there as well as in history_insights (no client change needed to see them).
             data_notes=_data_notes(rule_trace, payload["weather"]["source"])
+            + [item["text"] for item in insights]
             + _unpriced_product_notes(schedule, breakdown_lines),
+            history_insights=insights,
+            stage_used=stage_used,
         ),
         cost=cost,
         impact={"over_application_reduction_pct": history["over_application_reduction_pct"]},
@@ -339,6 +404,7 @@ def score_planned_risk(request: RiskScoreRequest, engine: Engine, today: date | 
         engine.tables,
         today,
         credit_window_days=engine.rules["credit_window_days"],
+        pk_window_days=_pk_window_days(engine, request.crop_type),
     )
     result = score_planned(
         payload["planned_application"],

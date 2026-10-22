@@ -63,6 +63,25 @@ class FertilizerUsage(BaseModel):
     applied_on: date
 
 
+class PreviousSoilTest(BaseModel):
+    """An earlier soil test of the same field (the latest one travels as `soil`)."""
+
+    tested_on: date
+    n: float = Field(ge=0)
+    p: float = Field(ge=0)
+    k: float = Field(ge=0)
+    ph: float = Field(ge=0, le=14)
+    organic_carbon: float = Field(ge=0, le=100)
+    moisture: float = Field(ge=0, le=100)
+
+
+class DailyRain(BaseModel):
+    """Rain that actually fell on one day at the field, mm."""
+
+    date: date
+    mm: float = Field(ge=0)
+
+
 class PlannedApplication(BaseModel):
     fertilizer_type: str
     quantity_kg_per_acre: float = Field(ge=0)
@@ -80,6 +99,11 @@ class RecommendRequest(BaseModel):
     soil: Soil
     weather: Weather
     previous_fertilizer_usage: list[FertilizerUsage] = []
+    # History the engine can use when the backend supplies it. All optional: without them the
+    # recommendation is exactly what it was before they existed.
+    soil_tested_on: date | None = None
+    previous_soil_tests: list[PreviousSoilTest] = []
+    rainfall_history: list[DailyRain] = []
 
 
 class RiskScoreRequest(BaseModel):
@@ -133,11 +157,24 @@ class NutrientBalance(BaseModel):
     k: NutrientPlan
 
 
+class HistoryInsight(BaseModel):
+    """One observation drawn from the field's earlier soil tests."""
+
+    kind: str
+    severity: Literal["warning", "watch", "good"]
+    nutrient: str | None = None
+    text: str
+
+
 class Explanation(BaseModel):
     top_factors: list[str]
     nutrient_balance: NutrientBalance
     formula: str
     data_notes: list[str] = []
+    history_insights: list[HistoryInsight] = []
+    # The stage the plan was built for. It is the saved stage unless the sowing date shows the crop
+    # has moved on, in which case it is the later stage (and data_notes says so).
+    stage_used: str | None = None
 
 
 class CostLine(BaseModel):

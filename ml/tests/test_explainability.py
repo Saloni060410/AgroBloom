@@ -133,6 +133,9 @@ def test_every_rule_and_risk_template_renders_with_sample_params():
         "feature_value": 200.0, "product": "urea", "ratio_pct": 150, "applied": 200.0,
         "needed": 123.6, "high_nutrient_label": "N", "high_ratio_pct": 200, "low_nutrient_label": "P2O5",
         "low_ratio_pct": 40, "low_below": 6.5, "high_above": 7.5, "rainfall": 25,
+        # history.* templates (engine/history.py)
+        "label": "Nitrogen (N)", "now": "800", "before": "300", "unit": "kg/ha", "date": "12 Sep 2026",
+        "before_rating": "medium", "now_rating": "low", "first": "0.62", "n": 4,
     }
     templates = _load_templates()
     for template_id in templates:
