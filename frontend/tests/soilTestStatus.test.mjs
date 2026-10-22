@@ -53,3 +53,14 @@ test('a test over a year old is stale even in the same stage', () => {
   const f = { cropType: 'sugarcane', sowingDate: '2025-03-01' } // season about 330 days
   assert.equal(soilTestState(f, { testedOn: '2025-03-02' }, on('2026-03-20')).state, 'stale')
 })
+
+test('a test taken long before the crop was sown is stale for a newly entered field or crop', () => {
+  const fresh = { cropType: 'wheat', sowingDate: '2026-11-15' }
+  const r = soilTestState(fresh, { testedOn: '2026-08-01' }, on('2026-11-15'))
+  assert.equal(r.state, 'stale')
+  assert.match(r.reason, /106 days before this crop was sown/)
+  // A test from the weeks before sowing is the normal pre-sowing test.
+  assert.equal(soilTestState(fresh, { testedOn: '2026-10-25' }, on('2026-11-15')).state, 'valid')
+  assert.equal(soilTestState(fresh, { testedOn: '2026-10-16' }, on('2026-11-15')).state, 'valid') // 30 days
+  assert.equal(soilTestState(fresh, { testedOn: '2026-10-15' }, on('2026-11-15')).state, 'stale') // 31 days
+})

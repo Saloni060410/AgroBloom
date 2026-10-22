@@ -3,6 +3,8 @@ import { CROPS_DATA } from '../data/cropsData.js'
 const DAY_MS = 86_400_000
 const FALLBACK_SEASON_DAYS = 120
 const MAX_AGE_DAYS = 365
+// A test taken longer than this before the crop was sown no longer describes the soil it goes into.
+const MAX_DAYS_BEFORE_SOWING = 30
 
 /**
  * The major points in a crop's season at which the soil's nutrient picture changes enough that an
@@ -46,8 +48,9 @@ const shortDate = (v) => toDate(v).toLocaleDateString('en-IN', { day: 'numeric',
 /**
  * Is this field's latest soil test still good enough to plan fertilizer from?
  *  - missing: no soil test at all.
- *  - stale: the crop has moved into a later major stage than the one the test was taken in, or the
- *    test is over a year old.
+ *  - stale: the crop has moved into a later major stage than the one the test was taken in, the test
+ *    was taken more than a month before the crop was sown (a new field or crop on land tested long
+ *    ago), or the test is over a year old.
  *  - valid: otherwise.
  *  - unknown: the lookup failed, so nothing is claimed either way.
  * `now` is injectable so the rule can be tested.
@@ -69,6 +72,13 @@ export function soilTestState(field, soil, now = new Date(), known = true) {
       reason: `Last tested ${shortDate(testedOn)}, at ${atTest.label}. The crop is now at ${atNow.label}. ${target}`,
       testedStage: atTest.label,
       currentStage: atNow.label,
+    }
+  }
+  const daysBeforeSowing = field?.sowingDate ? (toDate(field.sowingDate) - toDate(testedOn)) / DAY_MS : 0
+  if (daysBeforeSowing > MAX_DAYS_BEFORE_SOWING) {
+    return {
+      state: 'stale',
+      reason: `Last tested ${shortDate(testedOn)}, ${Math.round(daysBeforeSowing)} days before this crop was sown. Retest to keep the dose accurate.`,
     }
   }
   if (ageDays > MAX_AGE_DAYS) {
