@@ -1,9 +1,11 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate, useLocation, Link } from 'react-router-dom'
 import { AlertCircle, Eye, EyeOff, Mail, Lock } from 'lucide-react'
 import AuthLayout from '../../components/layout/AuthLayout.jsx'
 import { useUserStore } from '../../store/useUserStore.js'
 import AuthTabs from '../../components/layout/AuthTabs.jsx'
+import SlowLoadNotice from '../../components/ui/SlowLoadNotice.jsx'
+import { warmUpServer } from '../../services/warmUp.js'
 import { DEMO_ACCOUNT } from '../../utils/demoAccount.js'
 import { BRAND } from '../../components/brand/brand.js'
 
@@ -19,6 +21,10 @@ export default function Login() {
   const [apiError, setApiError] = useState(null)
   const [showPassword, setShowPassword] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+
+  useEffect(() => {
+    warmUpServer()
+  }, [])
 
   const navigate = useNavigate()
   const location = useLocation()
@@ -64,8 +70,8 @@ export default function Login() {
     >
       <AuthTabs mode="login" state={location.state} />
 
-      <form onSubmit={handleSubmit} noValidate className="mt-5 space-y-4">
-        <fieldset>
+      <form onSubmit={handleSubmit} noValidate className="mt-5 short:mt-3 space-y-4 short:space-y-3">
+        <fieldset className="short:hidden">
           <legend className="text-[15px] font-semibold text-ink-primary mb-1.5">Select Language</legend>
           <div className="grid grid-cols-3 rounded-md border-2 border-border-default overflow-hidden">
             {LANGUAGES.map((l) => (
@@ -93,7 +99,7 @@ export default function Login() {
         )}
 
         <div>
-          <label htmlFor="login-email" className="text-[15px] font-semibold text-ink-primary block mb-1.5">
+          <label htmlFor="login-email" className="text-[15px] font-semibold text-ink-primary block mb-1.5 short:mb-1">
             Email address
           </label>
           <div className="relative">
@@ -109,14 +115,14 @@ export default function Login() {
               disabled={isSubmitting}
               aria-invalid={fieldErrors.email ? 'true' : undefined}
               aria-describedby={fieldErrors.email ? 'login-email-err' : undefined}
-              className="w-full min-h-[48px] pl-11 pr-3 rounded-md border-2 border-primary-600 bg-white text-ink-primary placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-primary-600/30"
+              className="w-full min-h-[48px] short:min-h-[44px] pl-11 pr-3 rounded-md border-2 border-primary-600 bg-white text-ink-primary placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-primary-600/30"
             />
           </div>
           {fieldErrors.email && <p id="login-email-err" className="mt-1 text-xs text-risk-high-text">{fieldErrors.email}</p>}
         </div>
 
         <div>
-          <label htmlFor="login-password" className="text-[15px] font-semibold text-ink-primary block mb-1.5">
+          <label htmlFor="login-password" className="text-[15px] font-semibold text-ink-primary block mb-1.5 short:mb-1">
             Password
           </label>
           <div className="relative">
@@ -132,7 +138,7 @@ export default function Login() {
               disabled={isSubmitting}
               aria-invalid={fieldErrors.password ? 'true' : undefined}
               aria-describedby={fieldErrors.password ? 'login-password-err' : undefined}
-              className="w-full min-h-[48px] pl-11 pr-12 rounded-md border-2 border-primary-600 bg-white text-ink-primary placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-primary-600/30"
+              className="w-full min-h-[48px] short:min-h-[44px] pl-11 pr-12 rounded-md border-2 border-primary-600 bg-white text-ink-primary placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-primary-600/30"
             />
             <button
               type="button"
@@ -149,10 +155,11 @@ export default function Login() {
         <button
           type="submit"
           disabled={isSubmitting}
-          className="w-full min-h-[50px] rounded-full bg-primary-600 hover:bg-primary-700 disabled:opacity-60 text-white text-base font-medium shadow-md transition-colors cursor-pointer"
+          className="w-full min-h-[50px] short:min-h-[46px] rounded-full bg-primary-600 hover:bg-primary-700 disabled:opacity-60 text-white text-base font-medium shadow-md transition-colors cursor-pointer"
         >
           {isSubmitting ? 'Signing in…' : 'Log In'}
         </button>
+        <SlowLoadNotice active={isSubmitting} afterMs={3000} />
 
         <div className="flex items-center gap-3 text-sm text-ink-muted" aria-hidden="true">
           <span className="flex-1 h-px bg-border-default" />
@@ -163,7 +170,7 @@ export default function Login() {
         <button
           type="button"
           onClick={() => setFormData({ ...DEMO_ACCOUNT })}
-          className="w-full min-h-[48px] rounded-full bg-bg-muted hover:bg-border-default text-ink-primary text-base font-medium transition-colors cursor-pointer"
+          className="w-full min-h-[48px] short:min-h-[44px] rounded-full bg-bg-muted hover:bg-border-default text-ink-primary text-base font-medium transition-colors cursor-pointer"
         >
           Fill demo farmer account
         </button>

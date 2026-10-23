@@ -3,6 +3,8 @@ export default {
   content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
   theme: {
     extend: {
+      // A short window, such as a 13-inch laptop with the browser's toolbars showing: forms tighten up.
+      screens: { short: { raw: '(max-height: 820px)' } },
       colors: {
         bg: {
           base: 'var(--color-bg-base)',
