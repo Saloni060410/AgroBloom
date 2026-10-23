@@ -95,6 +95,46 @@ export function unmatchedLogs(recommendation, logs, matches = matchLogsToLines(r
     .sort((a, b) => new Date(b.appliedOn) - new Date(a.appliedOn))
 }
 
+const CREDITED_KEY = 'agrobloom.creditedLogs'
+
+function loadCredited() {
+  try {
+    return JSON.parse(localStorage.getItem(CREDITED_KEY) || '{}') || {}
+  } catch {
+    return {}
+  }
+}
+
+/**
+ * Remembers which logs a plan was made with, on this device. A log has no creation time to compare with the
+ * plan's, and an application made today can be logged before or after today's plan, so the dates alone cannot
+ * tell whether a plan already credits it.
+ */
+export function rememberCreditedLogs(recommendationId, logs) {
+  if (!recommendationId) return
+  try {
+    const all = loadCredited()
+    all[recommendationId] = (logs || []).map((l) => l.id)
+    const keep = Object.keys(all).slice(-30)
+    localStorage.setItem(CREDITED_KEY, JSON.stringify(Object.fromEntries(keep.map((k) => [k, all[k]]))))
+  } catch {
+    // storage unavailable: falls back to comparing dates
+  }
+}
+
+/**
+ * Of the logs that finished no dose, the ones the current plan was NOT made with, so it does not credit them
+ * yet. Uses the record from rememberCreditedLogs when this device made the plan; otherwise a log applied on a
+ * later day than the plan's day.
+ */
+export function logsNeedingCredit(recommendation, unmatched, credited = loadCredited()) {
+  if (!recommendation) return []
+  const known = credited[recommendation.id]
+  if (known) return unmatched.filter((l) => !known.includes(l.id))
+  const planDay = String(recommendation.createdAt).slice(0, 10)
+  return unmatched.filter((l) => String(l.appliedOn).slice(0, 10) > planDay)
+}
+
 export const SCHEDULE_CHANGED_EVENT = 'agrobloom:schedule-changed'
 
 /** Tell the sidebar badge that logs or plans changed. */

@@ -48,3 +48,23 @@ test('a product the plan does not use, or an application made before the plan, i
 test('with no plan every log is listed', () => {
   assert.deepEqual(unmatchedLogs(null, [log('a', 'urea', 20)]).map((l) => l.id), ['a'])
 })
+
+import { logsNeedingCredit } from '../src/utils/schedule.js'
+
+test('a log the plan was made with is credited; one logged after the plan is not', () => {
+  const plan = { id: 'p1', createdAt: '2026-10-23T18:00:00Z', schedule: [] }
+  const before = log('before', 'urea', 20)
+  const after = log('after', 'urea', 15)
+  assert.deepEqual(logsNeedingCredit(plan, [before, after], { p1: ['before'] }).map((l) => l.id), ['after'])
+})
+
+test('with no record for the plan, only a log applied on a later day than the plan needs credit', () => {
+  const plan = { id: 'p2', createdAt: '2026-10-23T18:00:00Z', schedule: [] }
+  const sameDay = log('same', 'urea', 20, '2026-10-23T00:00:00Z')
+  const later = log('later', 'urea', 20, '2026-10-24T00:00:00Z')
+  assert.deepEqual(logsNeedingCredit(plan, [sameDay, later], {}).map((l) => l.id), ['later'])
+})
+
+test('no plan, nothing to credit', () => {
+  assert.deepEqual(logsNeedingCredit(null, [log('a', 'urea', 20)], {}), [])
+})

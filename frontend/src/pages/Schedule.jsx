@@ -6,7 +6,7 @@ import * as endpoints from '../services/endpoints.js'
 import { useUserStore } from '../store/useUserStore.js'
 import { useFieldHistory } from '../hooks/useFieldHistory.js'
 import { formatDate, titleCase, daysFromToday, roundQty } from '../utils/format.js'
-import { matchLogsToLines, unmatchedLogs, notifyScheduleChanged, lineKey, saveLineHint } from '../utils/schedule.js'
+import { matchLogsToLines, unmatchedLogs, logsNeedingCredit, rememberCreditedLogs, notifyScheduleChanged, lineKey, saveLineHint } from '../utils/schedule.js'
 import { useRecommendationStore } from '../store/useRecommendationStore.js'
 import UndoToasts from '../components/ui/UndoToasts.jsx'
 import ProductIcon from '../components/reco/ProductIcon.jsx'
@@ -153,14 +153,15 @@ export default function Schedule() {
 
   const matches = matchLogsToLines(rec, logs)
   const earlier = unmatchedLogs(rec, logs, matches)
-  // An application made after the plan was generated is not credited in it yet.
-  const notCredited = earlier.some((l) => new Date(l.appliedOn) >= new Date(String(rec?.createdAt).slice(0, 10)))
+  // An application the plan was not made with is not credited in it yet.
+  const notCredited = logsNeedingCredit(rec, earlier).length > 0
 
   const updatePlan = async () => {
     setUpdating(true)
     setMarkError(null)
     try {
-      await generateRecommendation(fieldId, {})
+      const made = await generateRecommendation(fieldId, {})
+      rememberCreditedLogs(made?.id, logs)
       notifyScheduleChanged()
       await h.reload()
     } catch (err) {

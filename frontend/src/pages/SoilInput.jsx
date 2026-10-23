@@ -8,7 +8,7 @@ import { usePlotStore } from '../store/usePlotStore.js'
 import { useFieldStatusStore } from '../store/useFieldStatusStore.js'
 import { DEFAULT_RATINGS, ratingsFromReference } from '../utils/soilHealth.js'
 import { formatDate, titleCase } from '../utils/format.js'
-import { notifyScheduleChanged } from '../utils/schedule.js'
+import { notifyScheduleChanged, rememberCreditedLogs } from '../utils/schedule.js'
 import CropCard, { CropTile } from '../components/soil/CropCard.jsx'
 import ParamDial from '../components/soil/ParamDial.jsx'
 import ReportScanner from '../components/soil/ReportScanner.jsx'
@@ -156,7 +156,8 @@ export default function SoilInput() {
         })
         updatePlotInStore(fieldId, switched)
       }
-      await generateRecommendation(fieldId, {})
+      const made = await generateRecommendation(fieldId, {})
+      rememberCreditedLogs(made?.id, logs)
       notifyScheduleChanged()
       navigate(`/fields/${fieldId}/recommendation`)
     } catch (err) {
@@ -193,7 +194,8 @@ export default function SoilInput() {
     setUpdatingPlan(true)
     setLogError(null)
     try {
-      await generateRecommendation(fieldId, {})
+      const made = await generateRecommendation(fieldId, {})
+      rememberCreditedLogs(made?.id, logs)
       notifyScheduleChanged()
       navigate(`/fields/${fieldId}/schedule`)
     } catch (err) {
