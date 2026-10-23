@@ -44,3 +44,23 @@ def window_das(tables, row: dict, *, late_transplant: bool = False) -> tuple[flo
             return None
         start, end = start + offset, end + offset
     return start, end
+
+
+def estimated_window_das(tables, row: dict) -> tuple[float, float] | None:
+    """(first day, last day) after sowing that is an ESTIMATE, for a stage whose real days PAU does not give
+    (stage_timing_estimates.csv, with the reasoning in est_basis). Used only to give the farmer an approximate
+    date; it never decides which stage a crop is in."""
+    for estimate in tables.stage_timing_estimates:
+        if estimate["crop_id"] == row["crop_id"] and estimate["stage_id"] == row["stage_id"]:
+            start, end = _number(estimate["est_start"]), _number(estimate["est_end"])
+            return (start, end) if start is not None and end is not None else None
+    return None
+
+
+def window_or_estimate(tables, row: dict) -> tuple[tuple[float, float], bool] | None:
+    """((first, last) day, is_estimate): the sourced window when there is one, otherwise the estimate."""
+    sourced = window_das(tables, row)
+    if sourced is not None:
+        return sourced, False
+    estimate = estimated_window_das(tables, row)
+    return (estimate, True) if estimate is not None else None

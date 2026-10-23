@@ -1,0 +1,8 @@
+crop_id,stage_id,est_start,est_end,est_basis
+wheat,crown_root_initiation,21,28,"Team assumption, needs agronomist sign-off. PAU says the first nitrogen split goes with the first irrigation and gives the second split as 50-55 days after sowing, but no day count for the first irrigation. 21 to 28 days after sowing (3 to 4 weeks) is the usual timing."
+maize,knee_high,28,35,"Team assumption, needs agronomist sign-off. PAU names the knee-high stage without a day count. About 4 to 5 weeks after sowing; PAU's leaf colour chart for maize starts at 21 to 28 days after sowing."
+maize,pre_tasseling,50,60,"Team assumption, needs agronomist sign-off. PAU names the pre-tasseling stage without a day count. About 7 to 8 weeks after sowing, before silking starts."
+cotton,thinning,21,28,"Team assumption, needs agronomist sign-off. PAU says half the nitrogen goes on at thinning without a day count. About 3 to 4 weeks after sowing."
+cotton,flowering,60,75,"Team assumption, needs agronomist sign-off. PAU says the other half goes on when flowers appear, without a day count. Squaring is 45 to 55 days after sowing (PAU), so flowers appear about 60 to 75 days."
+sugarcane,first_n_topdress,30,45,"Team assumption, needs agronomist sign-off. PAU says half the nitrogen goes on with the first irrigation after germination, without a day count; for autumn planting PAU gives the first irrigation one month after planting."
+sugarcane,grand_growth,60,120,"Team assumption, needs agronomist sign-off. PAU says the remaining half goes on in May or June. For a March planting that is about 60 to 120 days after planting."
