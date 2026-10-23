@@ -5,7 +5,7 @@ export default [
   { ignores: ['node_modules'] },
   js.configs.recommended,
   {
-    files: ['**/*.js'],
+    files: ['**/*.js', '**/*.mjs'],
     languageOptions: { ecmaVersion: 'latest', sourceType: 'module', globals: globals.node },
     rules: { 'no-console': 'warn' },
   },
