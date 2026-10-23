@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { Printer, Sun, CloudRain, Check, FileText, FlaskConical, AlertCircle, ChevronDown } from 'lucide-react'
+import { Printer, CloudRain, Check, FileText, FlaskConical, AlertCircle, ChevronDown } from 'lucide-react'
 import useDocumentTitle from '../hooks/useDocumentTitle.js'
 import * as endpoints from '../services/endpoints.js'
 import { useUserStore } from '../store/useUserStore.js'
@@ -175,7 +175,6 @@ export default function Schedule() {
 
   const totals = {}
   for (const line of rec?.schedule || []) totals[line.fertilizer_type] = (totals[line.fertilizer_type] || 0) + line.quantity_kg_per_acre
-  const rainy = weather && weather.rainfallMmForecast >= 2
 
   return (
     <div className="space-y-8">
@@ -223,10 +222,11 @@ export default function Schedule() {
       {h.status === 'ready' && rec && (
         <>
           {weather && (
-            <p className={`no-print inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium border ${rainy ? 'bg-info-bg text-info-text border-info-border' : 'bg-risk-low-bg text-risk-low-text border-risk-low-border'}`}>
-              {rainy ? <CloudRain className="w-4 h-4" aria-hidden="true" /> : <Sun className="w-4 h-4" aria-hidden="true" />}
-              {weather.rainfallMmForecast} mm rain forecast over 5 days ({weather.source === 'live' ? 'live' : titleCase(weather.source)}).
-              {rainy ? ' Hold top-dressing until it has passed.' : ' A dry window for spreading.'}
+            // Only the forecast and where it came from: no advice drawn from it. The plan's own rain hold
+            // (with its threshold and source) is what decides when a dose waits.
+            <p className="no-print inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium border bg-info-bg text-info-text border-info-border">
+              <CloudRain className="w-4 h-4" aria-hidden="true" />
+              {weather.rainfallMmForecast} mm rain forecast over the next 5 days ({weather.source === 'live' ? 'live' : titleCase(weather.source)}).
             </p>
           )}
 

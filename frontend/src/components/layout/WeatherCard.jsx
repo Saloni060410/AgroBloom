@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Sun, CloudRain, Thermometer, Droplets, MapPin } from 'lucide-react'
+import { CloudSun, Thermometer, Droplets, MapPin } from 'lucide-react'
 import * as endpoints from '../../services/endpoints.js'
 
 const SOURCE_LABEL = { live: 'Live', cached: 'Cached', seasonal_average: 'Seasonal average' }
@@ -32,8 +32,6 @@ export default function WeatherCard({ field, className = '' }) {
   const current = result.id === fieldId ? result : { weather: null, failed: false }
   const { weather, failed } = current
 
-  const rainy = weather && weather.rainfallMmForecast >= 2
-  const Icon = rainy ? CloudRain : Sun
 
   return (
     <section
@@ -46,10 +44,10 @@ export default function WeatherCard({ field, className = '' }) {
       </div>
       {weather ? (
         <div className="mt-2 flex items-center gap-4">
-          <Icon className={`w-10 h-10 shrink-0 ${rainy ? 'text-accent-water' : 'text-accent-ochre'}`} aria-hidden="true" />
+          <CloudSun className="w-10 h-10 shrink-0 text-accent-ochre" aria-hidden="true" />
           <div className="leading-tight">
             <div className="text-2xl font-semibold">{Math.round(weather.temperatureC)}&deg;C</div>
-            <div className="text-xs text-ink-secondary">{rainy ? 'Rain expected' : 'Dry spell'}</div>
+            <div className="text-xs text-ink-secondary">Right now</div>
           </div>
           <div className="w-px self-stretch bg-border-default" aria-hidden="true" />
           <dl className="text-xs text-ink-secondary space-y-1">
