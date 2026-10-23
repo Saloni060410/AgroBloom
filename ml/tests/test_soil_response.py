@@ -1,9 +1,11 @@
-"""How much the dose follows the soil test, and whether the farmer is told when it does not.
+"""How the dose follows the soil test, and whether the farmer is told how.
 
-The dose is the published standard dose plus the published soil-test adjustment, minus credit. Where the
-source publishes no adjustment (wheat nitrogen and phosphorus, rice nitrogen, maize all three), the dose
-does not follow that soil value, and that is correct, not a fault. These tests pin that down so it is a
-decision, not an accident, and check the explanation says so."""
+The dose is the published standard dose plus a soil-test adjustment, minus credit. Where PAU publishes an
+adjustment for a crop and nutrient (wheat potassium, rice phosphorus and potassium, ...), that table decides.
+Where it publishes none (wheat nitrogen and phosphorus, rice nitrogen, maize all three), the dose follows the
+soil's rating BAND by the general ICAR rule: low +25%, medium the standard dose, high -25%, the same anywhere
+inside a band. pH and organic carbon have no dose rule, so they never move a dose. These tests pin that down
+so it is a decision, not an accident."""
 
 from datetime import date
 
@@ -35,42 +37,132 @@ def doses(response):
     return balance.n.fertilizer_needed_kg_ha, balance.p.fertilizer_needed_kg_ha, balance.k.fertilizer_needed_kg_ha
 
 
-def adjustment_note(response):
+def band_note(response):
     return next((n for n in response.explanation.data_notes if "publishes no soil-test adjustment" in n), None)
 
 
-def test_wheat_nitrogen_and_phosphorus_follow_the_published_standard_not_the_soil(engine):
+# ---- the band rule: same inside a band, a step at its edge -------------------------------------
+
+def test_wheat_nitrogen_is_one_dose_inside_each_band_and_steps_at_the_edges(engine):
+    low = {doses(plan(engine, n=value))[0] for value in (20, 100, 200, 279)}
+    medium = {doses(plan(engine, n=value))[0] for value in (280, 300, 450, 559)}
+    high = {doses(plan(engine, n=value))[0] for value in (561, 600, 700)}
+    assert len(low) == len(medium) == len(high) == 1
+    (low,), (medium,), (high,) = low, medium, high
+    assert medium == 123.6  # the published standard dose
+    assert low == pytest.approx(medium * 1.25, abs=0.01) and high == pytest.approx(medium * 0.75, abs=0.01)
+
+
+def test_wheat_phosphorus_steps_at_its_own_band_edges(engine):
+    low = {doses(plan(engine, p=value))[1] for value in (2, 5, 9.9)}
+    medium = {doses(plan(engine, p=value))[1] for value in (10, 15, 25)}
+    high = {doses(plan(engine, p=value))[1] for value in (26, 40)}
+    assert len(low) == len(medium) == len(high) == 1
+    (low,), (medium,), (high,) = low, medium, high
+    assert medium == 61.8 and low == pytest.approx(77.25, abs=0.01) and high == pytest.approx(46.35, abs=0.01)
+
+
+def test_the_nutrients_move_independently(engine):
+    n_low = doses(plan(engine, n=100))
+    assert n_low[1] == doses(plan(engine))[1] and n_low[2] == doses(plan(engine))[2]  # P and K untouched
+    p_low = doses(plan(engine, p=5))
+    assert p_low[0] == doses(plan(engine))[0]
+
+
+def test_ph_and_organic_carbon_never_move_a_dose(engine):
     baseline = doses(plan(engine))
-    for change in ({"n": 100}, {"n": 650}, {"p": 4}, {"p": 45}, {"ph": 5.2}, {"ph": 8.8}, {"organic_carbon": 0.2}, {"organic_carbon": 1.2}):
-        n, p, _ = doses(plan(engine, **change))
-        assert (n, p) == baseline[:2], change
+    for change in ({"ph": 5.2}, {"ph": 8.8}, {"organic_carbon": 0.2}, {"organic_carbon": 1.2}, {"moisture": 80}):
+        assert doses(plan(engine, **change)) == baseline, change
 
 
-def test_wheat_potassium_does_follow_the_soil_because_the_source_publishes_it(engine):
-    # (There is no "very low" band for potassium in the ratings table yet, so low is the lowest.)
-    ok = doses(plan(engine, k=150))[2]
-    low = doses(plan(engine, k=60))[2]
-    assert ok == 0 and low > 0
+def test_a_published_pau_adjustment_still_wins(engine):
+    """Wheat potassium has a PAU table (low and very low add MOP). The band rule never touches it: no
+    reduction for a high reading either, because PAU publishes none."""
+    ok, low, high = (doses(plan(engine, k=value))[2] for value in (150, 60, 450))
+    assert ok == 0 and low == pytest.approx(29.7, abs=0.01) and high == 0
 
 
-def test_the_ratings_still_follow_the_soil_values(engine):
-    low = plan(engine, n=100).explanation.nutrient_balance.n.soil_rating
-    high = plan(engine, n=650).explanation.nutrient_balance.n.soil_rating
-    assert (low, high) == ("low", "high")
+def test_the_ratings_follow_the_soil_values(engine):
+    ratings = {value: plan(engine, n=value).explanation.nutrient_balance.n.soil_rating for value in (100, 300, 650)}
+    assert ratings == {100: "low", 300: "medium", 650: "high"}
 
 
-def test_the_farmer_is_told_which_nutrients_do_not_follow_the_soil(engine):
-    wheat = adjustment_note(plan(engine))
-    assert "wheat" in wheat and "nitrogen and phosphorus" in wheat and "potassium" not in wheat
-    # Still said when potassium does adjust, because nitrogen and phosphorus still do not.
-    assert "nitrogen and phosphorus" in adjustment_note(plan(engine, k=60))
-    assert "nitrogen." in adjustment_note(plan(engine, crop="rice", stage="transplanting"))
-    maize = adjustment_note(plan(engine, crop="maize"))
+def test_switching_the_band_rule_off_goes_back_to_the_plain_standard_dose():
+    off = Engine()
+    off.rules["soil_rating_fallback"]["enabled"] = False
+    assert {doses(plan(off, n=value))[0] for value in (100, 300, 650)} == {123.6}
+    assert "so the general ICAR rule" not in band_note(plan(off))
+    assert "stay at the standard published dose" in band_note(plan(off))
+
+
+# ---- the farmer is told ------------------------------------------------------------------------
+
+def test_the_note_names_the_band_and_the_effect(engine):
+    note = band_note(plan(engine, n=100))
+    assert "wheat" in note and "nitrogen and phosphorus" in note and "potassium" not in note
+    assert "nitrogen 100 kg/ha is in the low band, +25% (+30.9 kg/ha)" in note
+    assert "phosphorus 15 kg/ha is in the medium band, so the standard dose" in note
+    assert "-25% (-30.9 kg/ha)" in band_note(plan(engine, n=600))
+
+
+def test_the_note_lists_the_right_nutrients_per_crop(engine):
+    assert "nitrogen 300" in band_note(plan(engine, crop="rice", stage="transplanting")) and "phosphorus" not in band_note(plan(engine, crop="rice", stage="transplanting"))
+    maize = band_note(plan(engine, crop="maize"))
     assert "nitrogen, phosphorus and potassium" in maize
-
-
-def test_a_crop_whose_adjustment_is_published_is_not_told_it_has_none(engine):
-    # sugarcane has published phosphorus and potassium adjustments, so only nitrogen is left unadjusted
+    # sugarcane has published phosphorus and potassium adjustments, so only nitrogen is banded
     stage = next(r["stage_id"] for r in engine.tables.growth_stages if r["crop_id"] == "sugarcane")
-    note = adjustment_note(plan(engine, crop="sugarcane", stage=stage))
-    assert note is not None and "nitrogen." in note and "phosphorus" not in note and "potassium" not in note
+    sugarcane = band_note(plan(engine, crop="sugarcane", stage=stage))
+    assert sugarcane is not None and "publishes no soil-test adjustment for nitrogen," in sugarcane
+
+
+def test_the_soil_adjustment_appears_in_the_working(engine):
+    balance = plan(engine, n=100).explanation.nutrient_balance
+    assert balance.n.soil_adjustment_kg_ha == pytest.approx(30.9, abs=0.01)
+    assert balance.n.standard_dose_kg_ha == 123.6
+    assert balance.n.fertilizer_needed_kg_ha == pytest.approx(123.6 + 30.9, abs=0.01)
+    assert balance.p.soil_adjustment_kg_ha == 0  # medium band: the standard dose
+
+
+# ---- the band rule with credits, the risk check, and the classifier note ---------------------------
+
+def test_a_credit_comes_off_the_banded_dose_and_never_below_zero(engine):
+    """Credit for a recent application is taken off the dose the band rule gave, and the result stops at 0."""
+    def needed(kg_per_acre, **soil):
+        request = RecommendRequest(
+            field_id="f", crop_type="wheat", irrigation="irrigated", growth_stage="sowing", soil={**BASE, **soil},
+            weather={"temperature_c": 25, "humidity_pct": 50, "rainfall_mm_forecast": 0, "source": "live"},
+            previous_fertilizer_usage=[{"type": "urea", "quantity_kg_per_acre": kg_per_acre, "applied_on": "2026-10-10"}],
+        )
+        return recommend(request, engine, TODAY).explanation.nutrient_balance.n
+
+    low, medium = needed(30, n=100), needed(30, n=300)
+    assert low.prior_credit_kg_ha == medium.prior_credit_kg_ha > 0
+    assert low.fertilizer_needed_kg_ha - medium.fertilizer_needed_kg_ha == pytest.approx(30.9, abs=0.01)
+    assert needed(400, n=100).fertilizer_needed_kg_ha == needed(400, n=300).fertilizer_needed_kg_ha == 0
+
+
+def test_the_planned_risk_check_uses_the_same_banded_dose(engine):
+    from src.api.schemas import RiskScoreRequest
+    from src.engine.recommendation_engine import score_planned_risk
+
+    def risk(n):
+        request = RiskScoreRequest(
+            crop_type="wheat", irrigation="irrigated", growth_stage="sowing", soil={**BASE, "n": n},
+            weather={"temperature_c": 25, "humidity_pct": 50, "rainfall_mm_forecast": 0, "source": "live"},
+            planned_application=[{"fertilizer_type": "urea", "quantity_kg_per_acre": 100}],
+        )
+        return score_planned_risk(request, engine, TODAY)
+
+    low, high = risk(100), risk(650)
+    assert low.model_dump() != high.model_dump()  # a 100 kg/acre urea plan is read against different needs
+
+
+def test_a_missing_factor_table_means_the_standard_dose_not_a_crash():
+    off = Engine()
+    del off.rules["soil_rating_fallback"]["factors"]
+    assert {doses(plan(off, n=value))[0] for value in (100, 300, 650)} == {123.6}
+    assert "stay at the standard published dose" in band_note(plan(off))
+
+
+def test_the_note_says_the_band_rule_is_not_a_pau_figure(engine):
+    assert "not a PAU figure" in band_note(plan(engine, n=600))

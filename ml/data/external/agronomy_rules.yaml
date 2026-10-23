@@ -98,3 +98,26 @@ oc_trend_min_tests: 3
 oc_trend_drop: 0.05
   # team assumption. Organic carbon fall (percentage points) from the oldest to the latest of those
   # tests, with no rise in between, that is reported as "falling".
+
+# --- Soil-test bands (the fallback for nutrients PAU gives no adjustment for) ---
+soil_rating_fallback:
+  # Where the Punjab Agricultural University publishes no soil-test adjustment for a crop's nutrient
+  # (wheat N and P, rice N, maize N P K ... see the TODO(data) rows in soil_adjustments.csv), the dose
+  # follows the soil's rating BAND instead: one dose anywhere inside a band, a different one in the next
+  # band. A crop-specific PAU adjustment, where one exists, always wins and this never touches it.
+  # Rating bands come from soil_test_ratings.csv (ICAR-IISS Bhopal: N low <280, high >560; P low <10,
+  # high >25; K low <108, high >280 kg/ha). Set enabled to false to go back to the plain standard dose.
+  # Sources, the general ICAR method used across India (not PAU-specific):
+  #   Rajendiran S, Dotaniya ML, Vassanda Coumar M (2020), Indian Farming, March 2020, ICAR-DRMR:
+  #     medium fertility is the general recommended dose; "in low or high categories, the fertilizer doses
+  #     are raised or lowered by 25%". The paper also notes the weakness of bands: one dose for a whole band.
+  #   Singh J, Mavi MS, Saini SP (2022), Indian J. Agric. Sci. 92(12):1502-1505, PAU Ludhiana,
+  #     doi 10.56093/ijas.v92i12.125137: same rule, "increased or decreased by 25% respectively".
+  # team assumption -- applying it to every crop and nutrient with no PAU table is our choice, and wants
+  # an agronomist's sign-off, especially for nitrogen, which PAU recommends at a fixed dose.
+  enabled: true
+  factors:
+    very_low: 1.25
+    low: 1.25
+    medium: 1.0
+    high: 0.75

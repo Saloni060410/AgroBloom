@@ -206,7 +206,18 @@ standard dose, skipping it).
 
 **Known gap:** wheat and rice N (and wheat P2O5) have no published PAU soil-test adjustment
 table — only `TODO(data)` rows, with the STCR equation noted as a full alternative computation
-path (see `stcr_equations.csv`).
+path (see `stcr_equations.csv`). The same is true of any other crop and nutrient without a row
+(maize N, P and K, for example).
+
+**How the engine covers the gap.** For a crop and nutrient with no PAU adjustment, the engine
+applies the general ICAR soil-test band rule from `agronomy_rules.yaml` (`soil_rating_fallback`):
+a low or very low rating adds 25% of the standard dose, a medium rating keeps it, a high rating
+takes off 25%, the same dose anywhere inside a band. Where PAU publishes an adjustment (wheat K,
+rice P and K, cotton K, sugarcane P and K, barley K) that table decides and the band rule never
+touches it. The 25% factors are a team assumption pending an agronomist's sign-off, nitrogen
+above all. Switching `soil_rating_fallback.enabled` to `false` restores the flat standard dose.
+pH, organic carbon and moisture never change a dose. The farmer sees which band applied and
+what it did to the dose in the plan's data notes.
 
 ### stcr_equations.csv
 

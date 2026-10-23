@@ -99,7 +99,7 @@ def teacher_product(engine: Engine, request: dict) -> str:
         engine.tables, TODAY,
         credit_window_days=engine.rules["credit_window_days"],
         pk_window_days=_pk_window_days(engine, request["crop_id"]),
-        rainfall_history=[], rain_rules=engine.rules,
+        rainfall_history=[], rain_rules=engine.rules, rules=engine.rules,
     )
     schedule = to_products(
         balance, request["crop_id"], request["stage_id"], None, request["weather"], engine.tables, TODAY,

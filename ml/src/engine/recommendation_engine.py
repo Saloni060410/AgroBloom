@@ -305,11 +305,28 @@ def _data_notes(rule_trace: list[dict], weather_source: str) -> list[str]:
         names = [_NUTRIENT_NAMES[e["nutrient"]] for e in unadjusted]
         names = names[0] if len(names) == 1 else ", ".join(names[:-1]) + " and " + names[-1]
         crop = unadjusted[0]["params"]["crop_id"]
-        notes.append(
-            f"For {crop}, the Punjab Agricultural University publishes no soil-test adjustment for {names}. "
-            f"Those doses stay at the standard published dose whatever the soil test reads; "
-            f"your soil values still set the soil ratings shown."
-        )
+        if all(e["params"]["band_factor"] is not None for e in unadjusted):
+            bands = "; ".join(
+                f"{_NUTRIENT_NAMES[e['nutrient']]} {e['value']:g} kg/ha is in the {e['params']['soil_rating'].replace('_', ' ')} band"
+                + (
+                    f", {e['params']['band_factor'] - 1:+.0%} ({e['params']['adjustment_kg_ha']:+.1f} kg/ha)"
+                    if e["params"]["band_factor"] != 1.0
+                    else ", so the standard dose"
+                )
+                for e in unadjusted
+            )
+            notes.append(
+                f"For {crop}, the Punjab Agricultural University publishes no soil-test adjustment for {names}, so the "
+                f"general ICAR rule for soil-test bands was used: a low band adds 25%, a high band takes off 25%, and "
+                f"a medium band keeps the standard dose, the same inside a whole band. This is a general rule, not a PAU "
+                f"figure, so check a dose that was cut with your local agriculture officer. Here: {bands}."
+            )
+        else:
+            notes.append(
+                f"For {crop}, the Punjab Agricultural University publishes no soil-test adjustment for {names}. "
+                f"Those doses stay at the standard published dose whatever the soil test reads; "
+                f"your soil values still set the soil ratings shown."
+            )
     for entry in rule_trace:
         if entry["rule_id"] == "stage_advanced_from_sowing_date":
             p = entry["params"]
@@ -366,6 +383,7 @@ def recommend(request: RecommendRequest, engine: Engine, today: date | None = No
         pk_window_days=_pk_window_days(engine, request.crop_type),
         rainfall_history=rainfall,
         rain_rules=engine.rules,
+        rules=engine.rules,
     )  # raises ReferenceDataIncomplete -> 503, UnknownStageError -> 422
     if stage_trace:
         rule_trace.append(stage_trace)
@@ -472,6 +490,7 @@ def score_planned_risk(request: RiskScoreRequest, engine: Engine, today: date | 
         today,
         credit_window_days=engine.rules["credit_window_days"],
         pk_window_days=_pk_window_days(engine, request.crop_type),
+        rules=engine.rules,
     )
     result = score_planned(
         payload["planned_application"],

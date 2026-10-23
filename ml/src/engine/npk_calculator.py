@@ -281,6 +281,7 @@ def compute_balance(
     pk_window_days: int | None = None,
     rainfall_history: list[dict] | None = None,
     rain_rules: dict | None = None,
+    rules: dict | None = None,
 ) -> tuple[dict, list[dict]]:
     """Returns (nutrient_balance, rule_trace). pk_window_days, if given, replaces credit_window_days
     for phosphorus and potassium (they stay in the soil for the crop's season); rainfall_history and
@@ -353,15 +354,21 @@ def compute_balance(
                 }
             )
             if not _has_published_adjustment(tables, crop_id, nutrient):
-                # Said once so the farmer is told why the dose does not follow this soil value.
+                # No PAU adjustment for this crop and nutrient. With the band rule on (rules given), the dose
+                # follows the soil's rating band: one dose inside a band, a different one in the next.
+                band = (rules or {}).get("soil_rating_fallback") or {}
+                factor = (band.get("factors") or {}).get(rating) if band.get("enabled") else None
+                if factor is not None:
+                    adjustment = (factor - 1.0) * standard_dose
+                # Said once so the farmer is told which band the soil is in and what that did to the dose.
                 trace.append(
                     {
                         "rule_id": "no_soil_adjustment_published",
                         "nutrient": nutrient,
                         "value": soil[nutrient],
                         "threshold": rating,
-                        "effect": "+0.0 kg/ha",
-                        "params": {"soil_rating": rating, "crop_id": crop_id},
+                        "effect": f"{adjustment:+.1f} kg/ha",
+                        "params": {"soil_rating": rating, "crop_id": crop_id, "band_factor": factor, "adjustment_kg_ha": round(adjustment, 3)},
                     }
                 )
             if adjustment != 0:

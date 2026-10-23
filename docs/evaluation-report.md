@@ -195,6 +195,13 @@ wheat/N, wheat/P, or rice/N (3 soil profiles × 3 crop/nutrient pairs = 9) — e
 already names. Independently arriving at the identical set of gaps from a separate script is
 itself a useful cross-check that the known-gaps list is accurate and complete, not stale.
 
+> **Update, October 2026.** The grid above describes the flat standard dose these three pairs had when it
+> was run, and was not re-run. Since then the engine applies the general ICAR soil-test band rule to them
+> (low and very low +25%, medium unchanged, high -25%; `agronomy_rules.yaml`, `soil_rating_fallback`), so
+> `formula_conformity` still reports them as the same disclosed gap, and it cannot check the banded
+> doses. `ml/tests/test_formula_sanity.py::test_band_rule_doses_match_an_independent_recomputation` does:
+> it recomputes each from `reference_doses.csv` and the YAML factors, not from the engine.
+
 ### 2.3 Risk results: over-fertilized, healthy, under-fertilized
 
 Reusing R11's three demo scenarios (`docs/demo-scenarios.md`), each a real `/recommend` call
