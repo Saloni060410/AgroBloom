@@ -37,9 +37,13 @@ export function saveLineHint(logId, key) {
  *
  * Pass 1 honours the line a log was marked done for on this device. Pass 2 pairs the remaining logs
  * with the remaining lines of the same product, dated lines first and the earliest date first, so
- * a log always clears the most overdue dose. Returns an array parallel to the schedule: the matched
+ * a log always clears the most overdue dose, but only when the log is close to the planned amount
+ * (COMPLETES_DOSE_FRACTION): 20 kg of urea logged against a 47 kg dose is a part-application, which
+ * the next plan credits, not a finished dose. Returns an array parallel to the schedule: the matched
  * log, or null for a line not applied yet.
  */
+export const COMPLETES_DOSE_FRACTION = 0.9
+
 export function matchLogsToLines(recommendation, logs, hints = loadLineHints()) {
   const lines = recommendation?.schedule || []
   if (!lines.length) return []
@@ -67,13 +71,28 @@ export function matchLogsToLines(recommendation, logs, hints = loadLineHints()) 
     })
   pool.forEach((log, li) => {
     if (used.has(li)) return
-    const idx = order.find((i) => !result[i] && lines[i].fertilizer_type === log.type)
+    const logged = Number(log.quantityKgPerAcre)
+    // A log with no usable quantity gets the benefit of the doubt; a real one is compared with the dose.
+    const completes = (i) => !Number.isFinite(logged) || logged >= COMPLETES_DOSE_FRACTION * Number(lines[i].quantity_kg_per_acre)
+    const idx = order.find((i) => !result[i] && lines[i].fertilizer_type === log.type && completes(i))
     if (idx !== undefined) {
       result[idx] = log
       used.add(li)
     }
   })
   return result
+}
+
+/**
+ * The logged applications that did not complete a plan dose, newest first: a product the plan does not use,
+ * a part-application, or one made before the plan was. The schedule lists them so a logged application never
+ * disappears; the next plan credits the ones inside the credit window.
+ */
+export function unmatchedLogs(recommendation, logs, matches = matchLogsToLines(recommendation, logs)) {
+  const matched = new Set(matches.filter(Boolean).map((l) => l.id))
+  return (logs || [])
+    .filter((l) => !matched.has(l.id))
+    .sort((a, b) => new Date(b.appliedOn) - new Date(a.appliedOn))
 }
 
 export const SCHEDULE_CHANGED_EVENT = 'agrobloom:schedule-changed'
