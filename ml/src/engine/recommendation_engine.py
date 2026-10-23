@@ -58,6 +58,8 @@ from src.degradation.risk_analyzer import assess_recommendation, score_planned
 from src.engine.cost import compare_to_history, cost_breakdown, estimate_cost, prices_as_of
 from src.engine.history import recent_rain, soil_history_insights, stage_from_sowing
 from src.engine.npk_calculator import _stage_row, compute_balance, to_products
+from src.models.imitation_features import FEATURE_SET as IMITATION_FEATURE_SET
+from src.models.imitation_features import build_imitation_features
 
 try:  # R10 (explain, ranking rule_trace items with XGBoost pred_contribs) isn't built yet.
     from src.evaluation.explainability import explain as _richa_explain
@@ -81,6 +83,7 @@ class LoadedModel:
     pipeline: object
     labels: list[str]
     dataset_source: str  # "real" | "fallback" -- carried through so a caller can tell
+    feature_set: str | None = None  # None: the original inputs (build_features); else see models/imitation_features
 
 
 def _rules_hash8() -> str:
@@ -117,6 +120,7 @@ def _load_active_model() -> LoadedModel | None:
             pipeline=joblib.load(artifact_path),
             labels=json.loads(labels_path.read_text()),
             dataset_source=entry.get("dataset_source", "unknown"),
+            feature_set=entry.get("feature_set"),
         )
     except (OSError, json.JSONDecodeError, KeyError, IndexError):
         return None
@@ -181,12 +185,25 @@ def _primary_product(schedule: list[dict]) -> tuple[str, float]:
     return product, round(totals[product], 3)
 
 
-def _classifier_opinion(engine: Engine, features) -> list[dict] | None:
+def _classifier_opinion(engine: Engine, features, request: RecommendRequest, stage_id: str) -> list[dict] | None:
     """Top-3 classifier probabilities for explain(), and for the disagreement check in step
-    (c). None if no classifier is registered -- the calculator's choice stands either way."""
+    (c). None if no classifier is registered -- the calculator's choice stands either way.
+    Each model is fed the inputs it was trained on: the original classifier gets `features`; the
+    rule-imitation model also needs the growth stage the plan was built for, which is why it is
+    passed here rather than read from the request."""
     if engine.model is None:
         return None
-    proba = engine.model.pipeline.predict_proba(features)[0]
+    if engine.model.feature_set is None:
+        inputs = features
+    elif engine.model.feature_set == IMITATION_FEATURE_SET:
+        soil = request.soil
+        inputs = build_imitation_features(
+            [{"crop_id": request.crop_type, "irrigation": request.irrigation, "stage_id": stage_id, "n": soil.n, "p": soil.p, "k": soil.k}],
+            engine.tables,
+        )
+    else:
+        return None  # a model for inputs this engine does not know how to build: no opinion, plan unaffected
+    proba = engine.model.pipeline.predict_proba(inputs)[0]
     order = proba.argsort()[::-1][:3]
     return [{"product": engine.model.labels[i], "probability": round(float(proba[i]), 4)} for i in order]
 
@@ -326,7 +343,7 @@ def recommend(request: RecommendRequest, engine: Engine, today: date | None = No
     # an unpriced-but-known product (e.g. MOP, see cost.py) is still scheduled here.
 
     primary_product, primary_quantity = _primary_product(schedule)
-    classifier_opinion = _classifier_opinion(engine, features)
+    classifier_opinion = _classifier_opinion(engine, features, request, stage_used)
     if classifier_opinion and classifier_opinion[0]["product"] != primary_product:
         rule_trace.append(
             {
@@ -342,7 +359,11 @@ def recommend(request: RecommendRequest, engine: Engine, today: date | None = No
     try:
         if _richa_explain is None:
             raise NotImplementedError("explain() is not implemented yet (R10)")
-        top_factors = _richa_explain(features=record, prediction=classifier_opinion, rule_trace=rule_trace, top_k=3)
+        # explain() describes the original classifier through its input columns; the rule-imitation
+        # model has different ones, and a sentence about its feature importances would be about the
+        # rules, not about this field, so it gets none.
+        explained = classifier_opinion if engine.model is None or engine.model.feature_set is None else None
+        top_factors = _richa_explain(features=record, prediction=explained, rule_trace=rule_trace, top_k=3)
     except Exception:  # noqa: BLE001 -- explain() is unbuilt/untested (R10); anything it does must never break /recommend
         top_factors = _fallback_top_factors(rule_trace)
 
