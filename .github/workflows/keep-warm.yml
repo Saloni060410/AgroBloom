@@ -1,0 +1,25 @@
+# Keeps the free API awake while people are likely to be using the site.
+#
+# Render's free web services go to sleep after about 15 minutes without traffic, and the first request after
+# that waits up to a minute for the server to start, which is what made signing in take 30 seconds. This pings
+# the API every 10 minutes between 07:30 and 23:29 IST (02:00 to 17:59 UTC), about 16 hours a day. That is
+# roughly 480 of the free plan's 750 shared instance hours a month, which leaves room for the ML service
+# (the API wakes it when it starts, and it sleeps again when idle). Pinging all day would use every free hour
+# on the API alone and get every service suspended at the end of the month, so do not widen the window
+# without doing that sum. Scheduled workflows only run from the default branch.
+name: Keep API awake
+
+on:
+  schedule:
+    - cron: "*/10 2-17 * * *"
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Ping the API
+        run: curl -fsS --retry 3 --retry-delay 20 --max-time 100 https://agrobloom-api.onrender.com/api/health
