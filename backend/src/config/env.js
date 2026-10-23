@@ -21,6 +21,12 @@ const schema = z.object({
   // How long to wait for the ML service. 5s is plenty when it is always running; a free host that
   // sleeps it needs about a minute for the first request after idle (see docs/DEPLOYMENT.md).
   ML_TIMEOUT_MS: z.coerce.number().int().positive().default(5000),
+  // Waits (ms, comma separated) between retries of a reference-data request that failed quickly: a
+  // refused or reset connection, or a 5xx, while the ML service is starting after a deploy or a sleep.
+  ML_RETRY_DELAYS_MS: z
+    .string()
+    .default('2000,5000,10000')
+    .transform((list) => list.split(',').map((ms) => Number(ms.trim())).filter((ms) => Number.isFinite(ms) && ms >= 0)),
   WEATHER_SERVICE_URL: z.string().url().default('https://api.open-meteo.com/v1'),
   GEOCODE_SERVICE_URL: z.string().url().default('https://geocoding-api.open-meteo.com/v1'),
 })
