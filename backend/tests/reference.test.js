@@ -43,6 +43,7 @@ before(async () => {
   process.env.ML_SERVICE_URL =
     `http://localhost:${server.address().port}`
   process.env.ML_MODE = 'online'
+  process.env.ML_RETRY_DELAYS_MS = '1,1'
 })
 
 after(() => server.close())
@@ -58,7 +59,7 @@ test('getCrops fetches from ML once, then serves from cache', async () => {
   assert.deepEqual(first, second)
 })
 
-test('serves a stale copy while ML is down, then 503 once past 24h', async () => {
+test('serves a stale copy while ML is down, then the bundled snapshot once past 24h', async () => {
   const mod =
     await import('../src/services/referenceService.js?stale=' + Date.now())
 
@@ -77,10 +78,10 @@ test('serves a stale copy while ML is down, then 503 once past 24h', async () =>
 
   Date.now = () => start + 25 * 60 * 60_000
 
-  await assert.rejects(
-    () => mod.getCrops(),
-    mod.ReferenceUnavailableError
-  )
+  // No copy left to show: the bundled snapshot (all seven crops) rather than a 503.
+  const snapshot = await mod.getCrops()
+
+  assert.equal(snapshot.length, 7)
 
   Date.now = originalNow
 })

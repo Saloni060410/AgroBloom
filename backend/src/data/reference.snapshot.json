@@ -1,0 +1,385 @@
+{
+  "crops": [
+    {
+      "id": "wheat",
+      "name_en": "Wheat",
+      "name_hi": "गेहूं",
+      "varieties": [],
+      "stages": [
+        {
+          "id": "sowing",
+          "name_en": "Sowing",
+          "name_hi": "बुवाई",
+          "order": 1
+        },
+        {
+          "id": "crown_root_initiation",
+          "name_en": "Crown Root Initiation / First Irrigation",
+          "name_hi": "मूल प्रारंभ अवस्था",
+          "order": 2
+        },
+        {
+          "id": "second_irrigation",
+          "name_en": "Second Irrigation / Late Tillering",
+          "name_hi": "दूसरी सिंचाई अवस्था",
+          "order": 3
+        },
+        {
+          "id": "maturity",
+          "name_en": "Maturity / Harvest",
+          "name_hi": "परिपक्वता अवस्था",
+          "order": 4
+        }
+      ]
+    },
+    {
+      "id": "rice",
+      "name_en": "Rice",
+      "name_hi": "चावल",
+      "varieties": [
+        {
+          "id": "pr_132",
+          "name_en": "PR 132",
+          "name_hi": "पीआर 132"
+        },
+        {
+          "id": "csr_30",
+          "name_en": "CSR 30",
+          "name_hi": "सीएसआर 30"
+        },
+        {
+          "id": "punjab_basmati_7",
+          "name_en": "Punjab Basmati 7",
+          "name_hi": "पंजाब बासमती 7"
+        },
+        {
+          "id": "punjab_basmati_5",
+          "name_en": "Punjab Basmati 5",
+          "name_hi": "पंजाब बासमती 5"
+        },
+        {
+          "id": "pusa_basmati_1121",
+          "name_en": "Pusa Basmati 1121",
+          "name_hi": "पूसा बासमती 1121"
+        },
+        {
+          "id": "pusa_basmati_1718",
+          "name_en": "Pusa Basmati 1718",
+          "name_hi": "पूसा बासमती 1718"
+        },
+        {
+          "id": "pusa_basmati_1847",
+          "name_en": "Pusa Basmati 1847",
+          "name_hi": "पूसा बासमती 1847"
+        },
+        {
+          "id": "pusa_basmati_1509",
+          "name_en": "Pusa Basmati 1509",
+          "name_hi": "पूसा बासमती 1509"
+        }
+      ],
+      "stages": [
+        {
+          "id": "nursery_sowing",
+          "name_en": "Nursery Sowing",
+          "name_hi": "नर्सरी बुवाई",
+          "order": 1
+        },
+        {
+          "id": "transplanting",
+          "name_en": "Transplanting",
+          "name_hi": "रोपाई",
+          "order": 2
+        },
+        {
+          "id": "first_n_split",
+          "name_en": "First Nitrogen Split",
+          "name_hi": "पहली नाइट्रोजन खुराक",
+          "order": 3
+        },
+        {
+          "id": "active_tillering",
+          "name_en": "Active Tillering / Second Nitrogen Split",
+          "name_hi": "सक्रिय कल्ले निकलना",
+          "order": 4
+        },
+        {
+          "id": "panicle_initiation",
+          "name_en": "Panicle Initiation / Third Nitrogen Split",
+          "name_hi": "बाली बनने की अवस्था",
+          "order": 5
+        }
+      ]
+    },
+    {
+      "id": "maize",
+      "name_en": "Maize",
+      "name_hi": "मक्का",
+      "varieties": [],
+      "stages": [
+        {
+          "id": "sowing",
+          "name_en": "Sowing",
+          "name_hi": "बुवाई",
+          "order": 1
+        },
+        {
+          "id": "knee_high",
+          "name_en": "Knee-high Stage",
+          "name_hi": "घुटने की ऊँचाई अवस्था",
+          "order": 2
+        },
+        {
+          "id": "pre_tasseling",
+          "name_en": "Pre-tasseling Stage",
+          "name_hi": "पूर्व-मंजरी अवस्था",
+          "order": 3
+        }
+      ]
+    },
+    {
+      "id": "cotton",
+      "name_en": "Cotton",
+      "name_hi": "कपास",
+      "varieties": [
+        {
+          "id": "non_bt",
+          "name_en": "Non-Bt cotton",
+          "name_hi": "गैर-बीटी कपास"
+        },
+        {
+          "id": "bt",
+          "name_en": "Bt cotton (not a hybrid)",
+          "name_hi": "बीटी कपास (गैर-संकर)"
+        }
+      ],
+      "stages": [
+        {
+          "id": "sowing",
+          "name_en": "Sowing",
+          "name_hi": "बुवाई",
+          "order": 1
+        },
+        {
+          "id": "thinning",
+          "name_en": "Thinning",
+          "name_hi": "विरलीकरण",
+          "order": 2
+        },
+        {
+          "id": "squaring",
+          "name_en": "Squaring",
+          "name_hi": "फूल कली अवस्था",
+          "order": 3
+        },
+        {
+          "id": "flowering",
+          "name_en": "Flower Initiation",
+          "name_hi": "फूल आना",
+          "order": 4
+        }
+      ]
+    },
+    {
+      "id": "sugarcane",
+      "name_en": "Sugarcane",
+      "name_hi": "गन्ना",
+      "varieties": [],
+      "stages": [
+        {
+          "id": "planting",
+          "name_en": "Planting",
+          "name_hi": "रोपण",
+          "order": 1
+        },
+        {
+          "id": "first_n_topdress",
+          "name_en": "First Nitrogen Top-dress (post-germination)",
+          "name_hi": "पहला नाइट्रोजन प्रयोग",
+          "order": 2
+        },
+        {
+          "id": "grand_growth",
+          "name_en": "Grand Growth (second N top-dress)",
+          "name_hi": "वृद्धि अवस्था",
+          "order": 3
+        }
+      ]
+    },
+    {
+      "id": "chickpea",
+      "name_en": "Chickpea (Gram)",
+      "name_hi": "चना",
+      "varieties": [
+        {
+          "id": "kabuli",
+          "name_en": "Kabuli gram",
+          "name_hi": "काबुली चना"
+        }
+      ],
+      "stages": [
+        {
+          "id": "sowing",
+          "name_en": "Sowing",
+          "name_hi": "बुवाई",
+          "order": 1
+        },
+        {
+          "id": "flowering_pod_filling",
+          "name_en": "Flowering / Pod Filling",
+          "name_hi": "फूल एवं फली भरने की अवस्था",
+          "order": 2
+        }
+      ]
+    },
+    {
+      "id": "barley",
+      "name_en": "Barley",
+      "name_hi": "जौ",
+      "varieties": [],
+      "stages": [
+        {
+          "id": "sowing",
+          "name_en": "Sowing",
+          "name_hi": "बुवाई",
+          "order": 1
+        },
+        {
+          "id": "maturity",
+          "name_en": "Maturity / Harvest",
+          "name_hi": "परिपक्वता अवस्था",
+          "order": 2
+        }
+      ]
+    }
+  ],
+  "soilRatings": [
+    {
+      "parameter": "organic_carbon",
+      "unit": "%",
+      "very_low_below": null,
+      "low_below": 0.5,
+      "high_above": 0.75
+    },
+    {
+      "parameter": "n",
+      "unit": "kg/ha",
+      "very_low_below": null,
+      "low_below": 280.0,
+      "high_above": 560.0
+    },
+    {
+      "parameter": "p",
+      "unit": "kg/ha",
+      "very_low_below": null,
+      "low_below": 10.0,
+      "high_above": 25.0
+    },
+    {
+      "parameter": "k",
+      "unit": "kg/ha",
+      "very_low_below": null,
+      "low_below": 108.0,
+      "high_above": 280.0
+    },
+    {
+      "parameter": "ph",
+      "unit": "pH units",
+      "very_low_below": null,
+      "low_below": 6.5,
+      "high_above": 7.5
+    }
+  ],
+  "fertilizers": [
+    {
+      "id": "urea",
+      "name": "Urea (neem-coated)",
+      "n_pct": 46.0,
+      "p2o5_pct": 0.0,
+      "k2o_pct": 0.0,
+      "price_inr_per_kg": 5.92,
+      "price_date": "2025-01-01",
+      "bag_size_kg": 45.0
+    },
+    {
+      "id": "dap",
+      "name": "DAP",
+      "n_pct": 18.0,
+      "p2o5_pct": 46.0,
+      "k2o_pct": 0.0,
+      "price_inr_per_kg": 27.0,
+      "price_date": "2025-01-01",
+      "bag_size_kg": 50.0
+    },
+    {
+      "id": "mop",
+      "name": "MOP (Muriate of Potash)",
+      "n_pct": 0.0,
+      "p2o5_pct": 0.0,
+      "k2o_pct": 60.0,
+      "price_inr_per_kg": 34.21,
+      "price_date": "2026-03-10",
+      "bag_size_kg": 50.0
+    },
+    {
+      "id": "ssp",
+      "name": "SSP (Single Superphosphate)",
+      "n_pct": 0.0,
+      "p2o5_pct": 16.0,
+      "k2o_pct": 0.0,
+      "price_inr_per_kg": null,
+      "price_date": null,
+      "bag_size_kg": null
+    },
+    {
+      "id": "npk_14_35_14",
+      "name": "NPK 14-35-14",
+      "n_pct": 14.0,
+      "p2o5_pct": 35.0,
+      "k2o_pct": 14.0,
+      "price_inr_per_kg": null,
+      "price_date": null,
+      "bag_size_kg": null
+    },
+    {
+      "id": "npk_17_17_17",
+      "name": "NPK 17-17-17",
+      "n_pct": 17.0,
+      "p2o5_pct": 17.0,
+      "k2o_pct": 17.0,
+      "price_inr_per_kg": null,
+      "price_date": null,
+      "bag_size_kg": null
+    },
+    {
+      "id": "np_20_20_0",
+      "name": "NP 20-20-0",
+      "n_pct": 20.0,
+      "p2o5_pct": 20.0,
+      "k2o_pct": 0.0,
+      "price_inr_per_kg": null,
+      "price_date": null,
+      "bag_size_kg": null
+    },
+    {
+      "id": "np_28_28_0",
+      "name": "NP 28-28-0",
+      "n_pct": 28.0,
+      "p2o5_pct": 28.0,
+      "k2o_pct": 0.0,
+      "price_inr_per_kg": 35.0,
+      "price_date": "2025-01-01",
+      "bag_size_kg": 50.0
+    },
+    {
+      "id": "npk_10_26_26",
+      "name": "NPK 10-26-26",
+      "n_pct": 10.0,
+      "p2o5_pct": 26.0,
+      "k2o_pct": 26.0,
+      "price_inr_per_kg": 34.4,
+      "price_date": "2025-01-01",
+      "bag_size_kg": 50.0
+    }
+  ]
+}

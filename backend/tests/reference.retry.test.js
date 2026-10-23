@@ -42,12 +42,13 @@ test('a 5xx while the ML service starts is retried until it answers', async () =
   assert.equal(hits, 3)
 })
 
-test('it gives up after the retries and reports the service unreachable', async () => {
+test('it gives up after the retries and serves the bundled snapshot', async () => {
   hits = 0
   failFirst = 99
   failStatus = 502
   const mod = await freshModule()
-  await assert.rejects(() => mod.getCrops(), { name: 'ReferenceUnavailableError' })
+  const crops = await mod.getCrops()
+  assert.equal(crops.length, 7) // the snapshot, not an error
   assert.equal(hits, 4) // the first try and the three retries
 })
 
@@ -56,8 +57,17 @@ test('a 4xx is not retried', async () => {
   failFirst = 99
   failStatus = 404
   const mod = await freshModule()
-  await assert.rejects(() => mod.getCrops(), { name: 'ReferenceUnavailableError' })
+  const crops = await mod.getCrops()
+  assert.equal(crops.length, 7)
   assert.equal(hits, 1)
+})
+
+test('without a snapshot copy (seasonal weather), a failure is still reported', async () => {
+  hits = 0
+  failFirst = 99
+  failStatus = 502
+  const mod = await freshModule()
+  await assert.rejects(() => mod.seasonalWeather(30.9, 75.8, 11), { name: 'ReferenceUnavailableError' })
 })
 
 test('callers that arrive together share one request', async () => {
