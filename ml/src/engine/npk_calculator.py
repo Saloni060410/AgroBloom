@@ -447,6 +447,51 @@ def _effective_sowing_date(tables: ReferenceTables, crop_id: str, growth_stage: 
     return today - timedelta(days=round(midpoint))
 
 
+def phosphorus_sources(tables: ReferenceTables, crop_id: str) -> tuple[str, list[str]]:
+    """The phosphorus product PAU lists first for the crop, and the others it lists as equal alternatives
+    (phosphorus_sources.csv). DAP for a crop with no row: the product the engine used before the table existed."""
+    for row in tables.phosphorus_sources:
+        if row["crop_id"] == crop_id:
+            alternatives = [item for item in row["alternative_products"].split("|") if item]
+            return row["primary_product"], alternatives
+    return "dap", []
+
+
+def phosphorus_alternatives(schedule: list[dict], crop_id: str, tables: ReferenceTables) -> dict | None:
+    """The same phosphorus supplied by each alternative product, for the farmer who cannot get the first one.
+    The schedule's phosphorus line fixes how much P2O5 is needed; each alternative's quantity follows from its
+    P2O5 share, and the urea changes by the difference in nitrogen the two products carry (a product with N
+    replaces some urea; one without it does not). Quantities are kg per acre. None when the plan has no
+    phosphorus product or the crop lists no alternatives."""
+    primary_id, alternative_ids = phosphorus_sources(tables, crop_id)
+    products = _fertilizer_products(tables)
+    line = next((item for item in schedule if item["fertilizer_type"] == primary_id), None)
+    if line is None or not alternative_ids or primary_id not in products:
+        return None
+    primary = products[primary_id]
+    p2o5_kg = line["quantity_kg_per_acre"] * float(primary["p2o5_pct"]) / 100
+    urea_n = float(products["urea"]["n_pct"]) / 100 if "urea" in products else None
+    options = []
+    for product_id in alternative_ids:
+        product = products.get(product_id)
+        if product is None or float(product["p2o5_pct"]) <= 0:
+            continue
+        quantity = p2o5_kg / (float(product["p2o5_pct"]) / 100)
+        n_difference = (line["quantity_kg_per_acre"] * float(primary["n_pct"]) - quantity * float(product["n_pct"])) / 100
+        options.append(
+            {
+                "product_id": product_id,
+                "name": product["name"],
+                "quantity_kg_per_acre": round(quantity, 1),
+                # more urea (+) when the alternative carries less nitrogen than the first product, less (-) when more
+                "urea_change_kg_per_acre": round(n_difference / urea_n, 1) if urea_n else None,
+            }
+        )
+    if not options:
+        return None
+    return {"primary_id": primary_id, "primary_name": primary["name"], "p2o5_kg_per_acre": round(p2o5_kg, 1), "options": options}
+
+
 def to_products(
     nutrient_balance: dict,
     crop_id: str,
@@ -463,7 +508,8 @@ def to_products(
     (split_schedule.csv), dates each stage from growth_stages.csv das_start counted from
     sowing_date (or an effective one derived from today and the current stage's midpoint --
     contract C1), and maps nutrients to products: DAP for P (crediting its N against the
-    first nitrogen-bearing stage), MOP for K, remaining N from urea.
+    first nitrogen-bearing stage), MOP for K, remaining N from urea. The phosphorus product is the one PAU lists
+    first for the crop (phosphorus_sources.csv): DAP, or single superphosphate for sugarcane.
 
     A needed product is selected and dosed even if it has no verified price yet (currently
     `ssp`, `npk_14_35_14`, `npk_17_17_17`, `np_20_20_0` -- `mop` was resolved 2026-09-27, PIB
@@ -531,12 +577,13 @@ def to_products(
 
     if p_lines and nutrient_balance["p"]["fertilizer_needed_kg_ha"] > 0:
         line = p_lines[0]
-        product = product_row("dap", "p")
+        p_product_id, _ = phosphorus_sources(tables, crop_id)
+        product = product_row(p_product_id, "p")
         p_needed = nutrient_balance["p"]["fertilizer_needed_kg_ha"] * line.fraction
         quantity = round(p_needed / ACRES_PER_HECTARE / (float(product["p2o5_pct"]) / 100), 3)
         n_credit_remaining += quantity * float(product["n_pct"]) / 100 * ACRES_PER_HECTARE
         apply_by, note = _stage_apply_by(tables, crop_id, line.stage, effective_sowing) if effective_sowing else (None, "At " + line.stage.replace("_", " "))
-        schedule.append(_schedule_item(line.stage, "dap", quantity, apply_by, note))
+        schedule.append(_schedule_item(line.stage, p_product_id, quantity, apply_by, note))
 
     if k_lines and nutrient_balance["k"]["fertilizer_needed_kg_ha"] > 0:
         line = k_lines[0]

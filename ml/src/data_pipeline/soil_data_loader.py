@@ -32,6 +32,7 @@ class ReferenceTables:
     stcr_equations: list[dict] = field(default_factory=list)
     split_schedule: list[dict] = field(default_factory=list)
     nutrient_efficiency: list[dict] = field(default_factory=list)
+    phosphorus_sources: list[dict] = field(default_factory=list)
     fertilizer_products: list[dict] = field(default_factory=list)
     soil_test_ratings: list[dict] = field(default_factory=list)
     seasonal_weather: list[dict] = field(default_factory=list)
@@ -53,6 +54,8 @@ _TABLE_SPECS: list[tuple[str, str, tuple[str, ...]]] = [
     ("split_schedule", "split_schedule.csv", ("crop_id", "stage_id", "n_fraction", "p_fraction", "k_fraction")),
     ("nutrient_efficiency", "nutrient_efficiency.csv",
      ("crop_id", "nutrient", "fertilizer_use_efficiency", "source", "notes")),
+    ("phosphorus_sources", "phosphorus_sources.csv",
+     ("crop_id", "primary_product", "alternative_products", "source", "notes")),
     ("fertilizer_products", "fertilizer_products.csv",
      ("product_id", "name", "dataset_label", "n_pct", "p2o5_pct", "k2o_pct",
       "price_inr_per_kg", "price_date", "bag_size_kg", "source")),

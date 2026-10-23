@@ -59,7 +59,12 @@ from src.data_pipeline.soil_data_loader import (
 from src.degradation.risk_analyzer import assess_recommendation, score_planned
 from src.engine.cost import compare_to_history, cost_breakdown, estimate_cost, prices_as_of
 from src.engine.history import recent_rain, soil_history_insights, stage_from_sowing
-from src.engine.npk_calculator import _stage_row, compute_balance, to_products
+from src.engine.npk_calculator import (
+    _stage_row,
+    compute_balance,
+    phosphorus_alternatives,
+    to_products,
+)
 from src.models.imitation_features import FEATURE_SET as IMITATION_FEATURE_SET
 from src.models.imitation_features import build_imitation_features
 
@@ -264,15 +269,17 @@ def _fallback_top_factors(rule_trace: list[dict]) -> list[str]:
     return factors
 
 
-def _unpriced_product_notes(schedule: list[dict], cost_breakdown_lines: list[dict]) -> list[str]:
+def _unpriced_product_notes(schedule: list[dict], cost_breakdown_lines: list[dict], products_table: list[dict]) -> list[str]:
     """A product cost.py excluded from cost.breakdown because it has no verified price yet
     (npk_calculator.to_products()'s docstring, cost.py's module docstring) is still in the
     schedule with a real quantity -- this is the one place that gap surfaces to the caller,
     since cost.breakdown's own omission is silent by itself."""
     priced_ids = {line["fertilizer_type"] for line in cost_breakdown_lines}
     scheduled_ids = {line["fertilizer_type"] for line in schedule}
+    names = {row["product_id"]: row["name"] for row in products_table}
     return [
-        f"{product_id}'s cost is unavailable (no verified price yet); it is not included in the cost breakdown."
+        f"There is no verified price for {names.get(product_id, product_id)} yet, so the cost shown leaves "
+        f"it out and the real cost is higher."
         for product_id in sorted(scheduled_ids - priced_ids)
     ]
 
@@ -371,6 +378,35 @@ def _data_notes(rule_trace: list[dict], weather_source: str) -> list[str]:
             )
     if weather_source != "live":
         notes.append(f"Weather is a {weather_source.replace('_', ' ')} value, not a live forecast.")
+    return notes
+
+
+def _product_notes(schedule: list[dict], request: RecommendRequest, tables) -> list[str]:
+    """What the plan leaves the farmer to decide: the same phosphorus from another product (PAU lists
+    DAP, single superphosphate and, for wheat and maize, nitrophosphate), and a variety with its own dose."""
+    notes = []
+    crop = request.crop_type.replace("_", " ")
+    alternatives = phosphorus_alternatives(schedule, request.crop_type, tables)
+    if alternatives:
+        parts = []
+        for option in alternatives["options"]:
+            urea = option["urea_change_kg_per_acre"]
+            urea_text = (
+                f", with about {abs(urea):g} kg/acre {'more' if urea > 0 else 'less'} urea" if urea is not None and abs(urea) >= 1 else ""
+            )
+            parts.append(f"{option['name']}: {option['quantity_kg_per_acre']:g} kg/acre{urea_text}")
+        sulphur = " Single superphosphate also supplies sulphur." if "ssp" in {o["product_id"] for o in alternatives["options"]} | {alternatives["primary_id"]} else ""
+        notes.append(
+            f"{alternatives['primary_name']} is the phosphorus fertilizer in PAU's table for {crop}. The same "
+            f"{alternatives['p2o5_kg_per_acre']:g} kg/acre of phosphorus (P2O5) can come from: " + "; ".join(parts) + f".{sulphur}"
+        )
+    if not request.variety:
+        varieties = [row["name_en"] for row in tables.crop_varieties if row["crop_id"] == request.crop_type]
+        if varieties:
+            notes.append(
+                f"PAU gives a different {crop} dose for {' and '.join(varieties)}. This plan uses the general "
+                f"{crop} dose; choose the variety on the field to get the dose that matches it."
+            )
     return notes
 
 
@@ -479,7 +515,8 @@ def recommend(request: RecommendRequest, engine: Engine, today: date | None = No
             # there as well as in history_insights (no client change needed to see them).
             data_notes=_data_notes(rule_trace, payload["weather"]["source"])
             + [item["text"] for item in insights]
-            + _unpriced_product_notes(schedule, breakdown_lines),
+            + _product_notes(schedule, request, engine.tables)
+            + _unpriced_product_notes(schedule, breakdown_lines, products_table),
             history_insights=insights,
             stage_used=stage_used,
         ),
