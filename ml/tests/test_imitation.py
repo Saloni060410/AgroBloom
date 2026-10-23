@@ -153,3 +153,26 @@ def test_a_model_for_inputs_the_engine_cannot_build_gives_no_opinion_and_no_fail
     response = recommend(as_request(sample), engine, TODAY)
     assert response.recommendation.fertilizer_type == teacher_product(engine, sample)
     assert not any("differed" in n for n in response.explanation.data_notes)
+
+
+def test_the_model_can_load_in_the_background_while_plans_are_already_served(trained, monkeypatch, tables):
+    """A host that starts the service on demand answers first and loads the classifier after. Until it is
+    there, plans carry no classifier note and /health says why; once it is there, it is used as normal."""
+    import time
+
+    root, _ = trained
+    monkeypatch.setattr(engine_module, "REGISTRY_PATH", root / "registry.json")
+    monkeypatch.setattr(engine_module, "ML_ROOT", root)
+    monkeypatch.setenv("ML_LOAD_MODEL_IN_BACKGROUND", "true")
+    monkeypatch.setattr(engine_module, "_MODEL_CACHE", {})  # force a real load, not a cached one
+
+    engine = Engine()
+    assert engine.model_loading or engine.model is not None  # returned without waiting for the load
+    sample = draw_requests(tables, 1, seed=5)[0]
+    assert recommend(as_request(sample), engine, TODAY).recommendation.fertilizer_type == teacher_product(engine, sample)
+
+    deadline = time.time() + 30
+    while engine.model is None and time.time() < deadline:
+        time.sleep(0.05)
+    assert engine.model is not None and engine.model.feature_set == FEATURE_SET
+    assert engine.status == "ok" and not engine.model_loading

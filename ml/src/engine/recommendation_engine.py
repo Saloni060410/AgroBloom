@@ -21,6 +21,8 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
+import threading
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
@@ -86,6 +88,11 @@ class LoadedModel:
     feature_set: str | None = None  # None: the original inputs (build_features); else see models/imitation_features
 
 
+# A loaded model per artifact file. The service builds its engine twice at start-up (once when the module
+# loads, once in the lifespan) and each build used to unpickle the same file again.
+_MODEL_CACHE: dict[tuple[str, int], object] = {}
+
+
 def _rules_hash8() -> str:
     """Hash of every file in data/external/ together, so any change to any reference table
     or rule changes model_version -- a bad recommendation traces back to the exact tables
@@ -114,10 +121,13 @@ def _load_active_model() -> LoadedModel | None:
         labels_path = ML_ROOT / entry["labels"]
         if not artifact_path.exists() or not labels_path.exists():
             return None
+        cache_key = (str(artifact_path), artifact_path.stat().st_mtime_ns)
+        if cache_key not in _MODEL_CACHE:
+            _MODEL_CACHE[cache_key] = joblib.load(artifact_path)
         return LoadedModel(
             name=entry["model_name"],
             version=entry["version"],
-            pipeline=joblib.load(artifact_path),
+            pipeline=_MODEL_CACHE[cache_key],
             labels=json.loads(labels_path.read_text()),
             dataset_source=entry.get("dataset_source", "unknown"),
             feature_set=entry.get("feature_set"),
@@ -140,8 +150,25 @@ class Engine:
             self.tables = None
             self.rules = None
             self._startup_error = str(error)
-        self.model: LoadedModel | None = _load_active_model() if self._startup_error is None else None
+        # Loading the classifier imports scikit-learn and scipy, most of the service's start-up time, and a plan
+        # does not need it (it is an optional cross-check). With ML_LOAD_MODEL_IN_BACKGROUND=true, a host that
+        # starts the service on demand can answer requests straight away while the model loads; until it has,
+        # plans carry no classifier note and /health says so. Off by default, so tests and local runs are unchanged.
+        self.model: LoadedModel | None = None
+        self.model_loading = False
+        if self._startup_error is None:
+            if os.environ.get("ML_LOAD_MODEL_IN_BACKGROUND", "").lower() == "true":
+                self.model_loading = True
+                threading.Thread(target=self._load_model_in_background, name="load-classifier", daemon=True).start()
+            else:
+                self.model = _load_active_model()
         self._rules_hash = _rules_hash8() if self._startup_error is None else None
+
+    def _load_model_in_background(self) -> None:
+        try:
+            self.model = _load_active_model()
+        finally:
+            self.model_loading = False
 
     def refresh_model(self) -> None:
         """Re-checks the registry for a newer model without restarting the service. Not
@@ -156,6 +183,8 @@ class Engine:
     def status_detail(self) -> str | None:
         if self._startup_error is not None:
             return f"reference data unavailable: {self._startup_error}"
+        if self.model is None and self.model_loading:
+            return "the classifier model is still loading; plans are unaffected"
         if self.model is None:
             return "no classifier model is registered yet in model_registry/registry.json"
         return None
