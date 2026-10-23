@@ -51,8 +51,15 @@ uvicorn src.api.main:app --reload --port 8001     # serve locally
 # picked up automatically from data/raw/ if present -- see ml/data/README.md.
 python -m src.data_pipeline.build_dataset --config configs/data.yaml
 
-# Recreate the model artifact from a clean checkout (models_artifacts/ is gitignored --
-# S9's Docker image gets it via a bind mount, not by baking it in):
+# Recreate the active model from a clean checkout (models_artifacts/ is gitignored). The service
+# serves the last model in model_registry/registry.json. The current one is the rule-imitation
+# classifier: it learns the rule engine's main product from requests the engine labels, takes a few
+# seconds, and must be retrained whenever data/external/ or the engine's product logic changes
+# (the Docker image does it on every build). See MODEL_CARD_RULE_IMITATION.md.
+python -m src.models.train_imitation --config configs/imitation.yaml
+
+# The original classifier, trained on the synthetic dataset (MODEL_CARD.md). Registering it makes
+# it the active model again:
 python -m src.models.train --config configs/train.yaml
 
 # Build and run the service image alone (S9) -- data/external/ and configs/ are baked in,

@@ -1,0 +1,18 @@
+# Config for the rule-imitation classifier. Read by
+# `python -m src.models.train_imitation --config configs/imitation.yaml` (see that module's docstring
+# and MODEL_CARD.md for what the model is and is not).
+
+model_name: rule-imitation-classifier
+seed: 42
+
+# Random requests drawn and labelled by the rule engine. Every draw is independent, so a larger number
+# only tightens the held-out estimate; the model is small either way.
+samples: 12000
+
+# Held out BEFORE fitting and used once, for the final agreement figure and its interval.
+held_out_fraction: 0.2
+folds: 5  # cross-validation on the training part only, reported alongside
+
+random_forest:
+  n_estimators: 150
+  min_samples_leaf: 2  # keeps the saved model small without costing agreement
