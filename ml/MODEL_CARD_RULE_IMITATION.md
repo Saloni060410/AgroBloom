@@ -1,29 +1,40 @@
 # Model card: `rule-imitation-classifier`
 
-A small classifier taught to pick the same main product as the rule engine. It replaces the original
-`fertilizer-classifier-0.1.1` (see `MODEL_CARD.md`) as the active model. Every number below comes from
-the registry entry for this model in `src/models/model_registry/registry.json` and its run record in
-`models_artifacts/runs/<run_id>/metrics.json`, except the two figures marked "end-to-end", which were
+A small classifier taught to name the same set of fertilizer products as the rule engine. It replaces the
+original `fertilizer-classifier-0.1.1` (see `MODEL_CARD.md`) as the active model. Every number below comes
+from the registry entry for this model in `src/models/model_registry/registry.json` (version 0.1.2) and its
+run record in `models_artifacts/runs/<run_id>/metrics.json`, except the "end-to-end" figures, which were
 measured separately and are described where they appear.
 
 ## What it is, in one paragraph
 
 The rule engine turns a soil test, crop, stage and earlier applications into a nutrient balance and then
-into products; its main product is the one with the largest total in the schedule. This model is trained
-to predict that main product from the crop, irrigation, growth stage and the soil's N, P and K. It was
-built because the original classifier, trained on a synthetic dataset, disagreed with the rule-based plan
-about as often as it agreed (it agreed on 54.5% of 3,000 realistic requests), which made the "the
-classifier's top guess differed" note more noise than signal. **It adds no independent evidence.** It
-reproduces the rules, so its agreement score measures imitation, not agronomic correctness, and the rule
-engine decides the dose and the product either way.
+into a schedule of products. This model is trained to predict **which products are in that schedule**, as one
+label such as `urea`, `dap+urea`, `dap+mop+urea`, `ssp+urea` or `none` (nothing to apply), from the crop,
+irrigation, growth stage, the soil's N, P and K, and the nitrogen, phosphorus and potassium the farmer
+applied recently. It was built because the original classifier, trained on a synthetic dataset, disagreed
+with the rule-based plan about as often as it agreed (54.5% agreement on 3,000 realistic requests), which
+made the "the classifier's top guess differed" note more noise than signal. **It adds no independent
+evidence.** It reproduces the rules, so its agreement score measures imitation, not agronomic correctness,
+and the rule engine decides the dose and the product either way.
+
+## Which products it can name
+
+Only the products the rule engine plans: urea (nitrogen), muriate of potash `mop` (potassium), and for
+phosphorus DAP `dap` or single superphosphate `ssp`. Single superphosphate is the phosphorus source for
+sugarcane, which is how PAU's table lists it. The NPK and NP blends in `fertilizer_products.csv` are never
+planned, because PAU's recommendations for these crops are given as urea, DAP or superphosphate, and
+potash; a blend would add phosphorus or potassium the soil test did not call for. For wheat and maize the
+plan's note offers NP 20-20-0 as an equal alternative (PAU's "nitrophosphate"), but that is a note, not the
+planned product, so the classifier does not predict it. The earlier one-product version (urea, DAP, none)
+could not show potash or superphosphate at all, because neither is ever the largest product in a plan.
 
 ## Intended use
 
-- Show, next to the plan, whether a second model that has learned the rules would pick the same main
-  product. The only visible effect is the note "The product classifier's top guess (X) differed from the
-  rule-based plan; the rule-based plan was kept", which now appears rarely and so points at an unusual
-  request.
-- Stay out of the dose. It never changes a quantity, a date, a risk score or the chosen product.
+- Show, next to the plan, whether a second model that has learned the rules would name the same products.
+  The only visible effect is the note "The product classifier's top guess (X) differed from the rule-based
+  plan (Y); the rule-based plan was kept", which appears rarely and so points at an unusual request.
+- Stay out of the dose. It never changes a quantity, a date, a risk score or a product.
 
 ## Out-of-scope uses
 
@@ -35,7 +46,7 @@ engine decides the dose and the product either way.
 ## Training data
 
 Generated, not collected. `src/models/train_imitation.py` draws random requests and asks the rule engine
-for its main product ("teacher"):
+which products its plan uses ("teacher"):
 
 | | |
 |---|---|
@@ -43,25 +54,32 @@ for its main product ("teacher"):
 | Crop and irrigation | any combination `reference_doses.csv` covers, chosen uniformly |
 | Growth stage | any stage of that crop's season, uniformly |
 | Soil | N 80 to 700, P 3 to 60, K 40 to 520 kg/ha (pH, organic carbon, moisture also drawn; the model does not use them) |
-| Earlier applications | half the draws have one or two (urea, DAP or MOP, 10 to 80 kg/acre, 3 to 55 days ago); the model does not see them |
-| Labels | urea 8,850, none 2,186, dap 964 |
+| Earlier applications | half the draws have one or two (urea, DAP or MOP, 10 to 80 kg/acre, 3 to 55 days ago) |
+| Labels | urea 6,433; dap+urea 2,302; none 2,186; dap+mop+urea 683; dap 189; mop+urea 134; ssp+urea 56; mop+ssp+urea 14; dap+mop 3 |
 | Draw anchor date | fixed (2026-10-22), so the data does not depend on the day it is trained |
 
 The sampling is uniform, not drawn from real farms, so the model is accurate on the kinds of requests the
-tables cover and says nothing about how often farmers hit each case.
+tables cover and says nothing about how often farmers hit each case. Plans with superphosphate come only
+from sugarcane that is low in phosphorus, so they are rare (70 of 12,000).
 
 ## Inputs
 
-`rule_imitation_v1` (`src/models/imitation_features.py`): one-hot crop, irrigated (0 or 1), stage order
-within the season, and the soil's N, P, K. The growth stage is the part that matters: with only the
-original classifier's inputs (crop, weather, N, P, K) the best a model reached was 81.6% agreement,
-against 98.4% with the stage added (99.1% before the soil-rating bands were added to the rules).
-Adding pH, organic carbon, irrigation and earlier applications on top did not move it.
+`rule_imitation_v2` (`src/models/imitation_features.py`): one-hot crop, irrigated (0 or 1), stage order
+within the season, the soil's N, P, K, and the N, P2O5 and K2O (kg/ha) in earlier applications still inside
+the credit window, as gross amounts with no efficiency or rain logic. Two measurements shaped this:
+
+- The growth stage matters most: with only the original classifier's inputs (crop, weather, N, P, K) the
+  best a model reached was 81.6% agreement on the old one-product label.
+- Earlier applications matter for the product-set label: enough nitrogen from an earlier application
+  removes the urea from the plan, enough phosphorus removes the DAP. A forest that could not see them
+  agreed with the plan on about 96.2% of held-out requests; with them as inputs it agrees on 99.2%. pH,
+  organic carbon, moisture and weather are not inputs: they move no dose.
 
 ## Evaluation protocol
 
 - The 20% held-out part (2,400 requests) is split off, stratified and seeded, **before** any fitting.
-- Cross-validation (5 folds) runs on the 9,600 training requests only.
+- Cross-validation runs on the 9,600 training requests only. It uses 2 folds, not 5, because the rarest
+  label has only 2 members in the training part and a stratified split cannot have more folds than that.
 - The model is fitted once, with no hyperparameter search, and the held-out part is evaluated once.
 - The interval is a 1,000-draw bootstrap over the held-out requests.
 
@@ -69,35 +87,42 @@ Adding pH, organic carbon, irrigation and earlier applications on top did not mo
 
 | Held-out agreement with the rule engine | |
 |---|---|
-| Agreement | **98.4%** (95% CI 97.9 to 98.9) |
-| Macro F1 | 0.962 |
-| Cross-validated (training part) | 98.5% (+/- 0.2 across 5 folds) |
-| Baseline: always predict urea | 73.8% |
-| Original classifier on a different, comparable sample (3,000 requests) | 54.5% |
-| End-to-end: fresh 500 requests through the full recommendation, new seed | 99.0% (5 differences) |
+| Agreement | **99.2%** (95% CI 98.9 to 99.6) |
+| Macro F1 | 0.866 (see the note below) |
+| Cross-validated (training part, 2 folds) | 98.8% (+/- 0.1) |
+| Baseline: always predict the commonest label (urea) | 53.6% |
+| End-to-end: fresh 500 requests through the full recommendation | 99.0% (5 differences, seed 99) and 99.4% (3 differences, seed 2024) |
 
-| Product | Precision | Recall | Held-out count |
+| Label | Precision | Recall | Held-out count |
 |---|---|---|---|
-| urea | 0.988 | 0.993 | 1,770 |
-| none (no fertilizer needed) | 1.000 | 0.991 | 437 |
-| dap | 0.910 | 0.891 | 193 |
+| urea | 0.995 | 0.998 | 1,286 |
+| dap+urea | 0.985 | 0.991 | 460 |
+| none (nothing to apply) | 0.998 | 1.000 | 437 |
+| dap (urea not needed) | 1.000 | 0.868 | 38 |
+| dap+mop+urea | 0.993 | 0.971 | 137 |
+| mop+urea | 0.900 | 1.000 | 27 |
+| ssp+urea | 1.000 | 0.909 | 11 |
+| mop+ssp+urea | 1.000 | 1.000 | 3 |
+| dap+mop | 0.000 | 0.000 | 1 |
 
-Confusion (rows are the rule engine): of 193 DAP cases, 172 were predicted DAP and 21 urea; of 437 "none",
-433 were predicted "none" and 4 DAP; of 1,770 urea cases, 1,757 were predicted urea and 13 DAP.
+**Macro F1 is pulled down by tiny classes.** It averages the nine labels equally, and `dap+mop` has one
+held-out example, which the model missed; that one label alone costs about 0.11. The always-urea baseline
+scores 53.6% here because urea alone is only about half of the plans, unlike the one-product label where it
+was 73.8%.
 
-By crop: cotton, rice, sugarcane 100%; maize 98.5%; wheat 98.9%; barley 96.1%; **chickpea 95.5%** (the
-lowest).
+By crop: wheat 100%, maize 100%, sugarcane 99.7%, cotton 99.7%, barley 98.8%, rice 98.3%, chickpea 98.3%.
 
 ## Limitations and failure modes
 
 - **Agreement is not correctness.** If a rule or a table value is wrong, this model learns the error. That
   includes the values marked "team assumption" in `agronomy_rules.yaml`.
-- **The misses cluster at the first stage**, where the rules sit on the line between a phosphorus product
-  (DAP) and urea, and between "no fertilizer needed" and DAP. DAP recall is 89%. The soil-rating bands
-  (`soil_rating_fallback` in `agronomy_rules.yaml`) put more of those lines inside the sampled range, which is why agreement fell from 99.1% to 98.4%.
-- It does not see weather, rainfall or earlier applications, so a request where those decide the main
-  product can differ. In the end-to-end check 5 of 500 requests differed (all at the first stage); I did
-  not isolate whether those inputs were the cause.
+- **Misses are at the edges of a rule.** The held-out errors are a few `dap` plans (urea just not needed)
+  predicted as `dap+urea`, and the rare labels.
+- It does not see weather, rainfall or the rain-reduced nitrogen credit, so a request where recent rain
+  decides whether urea is needed can differ. It sees earlier applications only as amounts inside the credit
+  window, not their age.
+- Superphosphate and the potash combinations are rare in the training data (see the label counts), so its
+  agreement there rests on few examples.
 - It is accurate only for the rules it was trained on. Any change to `data/external/` or to the engine
   changes the rules hash, and the model must be retrained (see below). The engine enforces this: at load
   it compares the model's recorded `rules_hash` with the current one, leaves a mismatched model out and
@@ -120,8 +145,9 @@ caveats").
 | Config | `configs/imitation.yaml` (hash in the registry entry) |
 | Data | regenerated from the seed; its hash is in the registry entry, and the same seed gives the same hash |
 | Rules | `rules_hash` in the registry entry: a hash of every file in `data/external/` |
+| Code | `git_sha` in the registry entry: the commit the model was trained at |
 | Environment | Python 3.11, scikit-learn 1.9, pandas 3.0, numpy 2.4 (full list in the run record) |
-| Cost | about 5 seconds on a laptop; the Docker image runs it on every build |
+| Cost | about 10 seconds on a laptop; the Docker image runs it on every build |
 | Artifact | `models_artifacts/rule-imitation-classifier-<version>.joblib`, git-ignored; the registry entry is committed |
 
 ## Ownership and retraining
@@ -129,5 +155,6 @@ caveats").
 Saloni owns it (`ml/src/models`). Retrain whenever the reference tables, the rules or the engine's
 product logic change. The Docker image does this on every build, so a deployed service is always in step
 with its own rules; a local checkout runs the command above. `tests/test_imitation.py` checks that the
-fast teacher picks the same product as the full recommendation, that training is reproducible and
-leak-free, and that an unknown model type cannot break a recommendation.
+fast teacher names the same products as the full recommendation, that training is reproducible and
+leak-free, that the engine disagrees with the trained model rarely (limit 4%, measured 1 to 2%), and that
+an unknown model type cannot break a recommendation.
