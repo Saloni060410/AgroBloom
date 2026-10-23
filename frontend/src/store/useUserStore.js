@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { resetSessionData } from './resetSession.js'
 import * as endpoints from '../services/endpoints.js'
 
 export const useUserStore = create((set, get) => ({
@@ -70,6 +71,7 @@ export const useUserStore = create((set, get) => ({
         // ignore storage error
       }
 
+      resetSessionData() // never start from another account's fields
       set({
         user,
         accessToken,
@@ -99,6 +101,7 @@ export const useUserStore = create((set, get) => ({
         // ignore storage error
       }
 
+      resetSessionData() // never start from another account's fields
       set({
         user,
         accessToken,
@@ -130,6 +133,7 @@ export const useUserStore = create((set, get) => ({
       } catch {
         // ignore
       }
+      resetSessionData() // the next person on this device must not see this account's fields
       set({
         user: null,
         accessToken: null,

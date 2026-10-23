@@ -6,7 +6,8 @@ import * as endpoints from '../services/endpoints.js'
 import { useUserStore } from '../store/useUserStore.js'
 import { useFieldHistory } from '../hooks/useFieldHistory.js'
 import { formatDate, titleCase, daysFromToday, roundQty } from '../utils/format.js'
-import { matchLogsToLines, notifyScheduleChanged, lineKey, saveLineHint } from '../utils/schedule.js'
+import { matchLogsToLines, unmatchedLogs, logsNeedingCredit, rememberCreditedLogs, notifyScheduleChanged, lineKey, saveLineHint } from '../utils/schedule.js'
+import { useRecommendationStore } from '../store/useRecommendationStore.js'
 import UndoToasts from '../components/ui/UndoToasts.jsx'
 import ProductIcon from '../components/reco/ProductIcon.jsx'
 import PlotSwitcher from '../components/layout/PlotSwitcher.jsx'
@@ -46,6 +47,8 @@ export default function Schedule() {
   const [queue, setQueue] = useState([]) // marked done, waiting out the undo window
   const [confirm, setConfirm] = useState(null) // { key, qty, date, error } for the step being confirmed
   const [markError, setMarkError] = useState(null)
+  const { generateRecommendation } = useRecommendationStore()
+  const [updating, setUpdating] = useState(false)
   const pending = useRef(new Map()) // id -> { timer, item }
 
   useEffect(() => {
@@ -149,6 +152,24 @@ export default function Schedule() {
   }
 
   const matches = matchLogsToLines(rec, logs)
+  const earlier = unmatchedLogs(rec, logs, matches)
+  // An application the plan was not made with is not credited in it yet.
+  const notCredited = logsNeedingCredit(rec, earlier).length > 0
+
+  const updatePlan = async () => {
+    setUpdating(true)
+    setMarkError(null)
+    try {
+      const made = await generateRecommendation(fieldId, {})
+      rememberCreditedLogs(made?.id, logs)
+      notifyScheduleChanged()
+      await h.reload()
+    } catch (err) {
+      setMarkError(err?.message || 'Could not update the plan. Try again.')
+    } finally {
+      setUpdating(false)
+    }
+  }
   const steps = (rec?.schedule || []).map((line, i) => {
     const m = meta[line.fertilizer_type]
     const key = lineKey(line, i)
@@ -356,6 +377,34 @@ export default function Schedule() {
                 )
               })}
             </ol>
+          )}
+
+          {earlier.length > 0 && (
+            <section aria-labelledby="earlier-heading" className="no-print rounded-lg border border-border-default bg-white/80 p-5">
+              <h2 id="earlier-heading" className="text-lg font-semibold text-ink-primary">Applied earlier</h2>
+              <p className="text-sm text-ink-secondary mt-1">
+                Applications you logged that did not finish a dose in this plan: a different product, only part of a dose, or made before the plan.
+                The next plan credits them.
+              </p>
+              <ul className="mt-3 divide-y divide-border-subtle text-sm">
+                {earlier.slice(0, 8).map((l) => (
+                  <li key={l.id} className="py-2.5 flex flex-wrap items-center justify-between gap-2">
+                    <span className="flex items-center gap-2.5 font-medium text-ink-primary">
+                      <ProductIcon type={l.type} className="w-6 h-7 shrink-0" /> {meta[l.type]?.name || h.fertName(l.type)}
+                    </span>
+                    <span className="text-ink-secondary">{roundQty(l.quantityKgPerAcre)} kg/acre &middot; logged {formatDate(l.appliedOn)}</span>
+                  </li>
+                ))}
+              </ul>
+              {notCredited && (
+                <div className="mt-4 flex flex-wrap items-center gap-3">
+                  <p className="text-sm text-ink-secondary">The plan above was made before the latest of these. Update it to credit them.</p>
+                  <button type="button" onClick={updatePlan} disabled={updating} className="min-h-[44px] px-5 rounded-full bg-primary-600 hover:bg-primary-700 disabled:opacity-60 text-white text-sm font-medium cursor-pointer">
+                    {updating ? 'Updating…' : 'Update plan'}
+                  </button>
+                </div>
+              )}
+            </section>
           )}
 
           {/* Retailer slip, print-friendly */}

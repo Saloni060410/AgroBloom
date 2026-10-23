@@ -8,7 +8,7 @@ import { usePlotStore } from '../store/usePlotStore.js'
 import { useFieldStatusStore } from '../store/useFieldStatusStore.js'
 import { DEFAULT_RATINGS, ratingsFromReference } from '../utils/soilHealth.js'
 import { formatDate, titleCase } from '../utils/format.js'
-import { notifyScheduleChanged } from '../utils/schedule.js'
+import { notifyScheduleChanged, rememberCreditedLogs } from '../utils/schedule.js'
 import CropCard, { CropTile } from '../components/soil/CropCard.jsx'
 import ParamDial from '../components/soil/ParamDial.jsx'
 import ReportScanner from '../components/soil/ReportScanner.jsx'
@@ -52,6 +52,8 @@ export default function SoilInput() {
   const [newLog, setNewLog] = useState({ type: '', qty: '', date: new Date().toISOString().slice(0, 10) })
   const [logBusy, setLogBusy] = useState(false)
   const [logError, setLogError] = useState(null)
+  const [loggedNote, setLoggedNote] = useState(false)
+  const [updatingPlan, setUpdatingPlan] = useState(false)
 
   const [running, setRunning] = useState(false)
   const [runError, setRunError] = useState(null)
@@ -154,7 +156,8 @@ export default function SoilInput() {
         })
         updatePlotInStore(fieldId, switched)
       }
-      await generateRecommendation(fieldId, {})
+      const made = await generateRecommendation(fieldId, {})
+      rememberCreditedLogs(made?.id, logs)
       notifyScheduleChanged()
       navigate(`/fields/${fieldId}/recommendation`)
     } catch (err) {
@@ -175,12 +178,29 @@ export default function SoilInput() {
     try {
       const created = await endpoints.createFertilizerLog(fieldId, { type: newLog.type, quantityKgPerAcre: qty, appliedOn: newLog.date })
       setLogs((l) => [created, ...l])
+      setLoggedNote(true)
       notifyScheduleChanged()
       setNewLog((n) => ({ ...n, qty: '' }))
     } catch (err) {
       setLogError(err?.details?.fieldErrors?.appliedOn?.[0] || err?.message || 'Could not save this application.')
     } finally {
       setLogBusy(false)
+    }
+  }
+
+  // The plan already saved was made before this application. Make a new one now so the schedule shows what is
+  // still to do after crediting it, and go to the schedule.
+  const updatePlanNow = async () => {
+    setUpdatingPlan(true)
+    setLogError(null)
+    try {
+      const made = await generateRecommendation(fieldId, {})
+      rememberCreditedLogs(made?.id, logs)
+      notifyScheduleChanged()
+      navigate(`/fields/${fieldId}/schedule`)
+    } catch (err) {
+      setLogError(err?.message || 'Could not update the plan. Try again.')
+      setUpdatingPlan(false)
     }
   }
 
@@ -323,6 +343,16 @@ export default function SoilInput() {
             </button>
           </form>
           {logError && <p role="alert" className="mt-2 text-sm text-risk-high-text">{logError}</p>}
+          {loggedNote && (
+            <div role="status" className="mt-3 flex flex-wrap items-center gap-3 rounded-md bg-risk-low-bg border border-risk-low-border text-risk-low-text px-4 py-3 text-sm">
+              <span className="font-medium">Logged. It is credited the next time the plan is made.</span>
+              {statusByField[fieldId]?.recommendation && (
+                <button type="button" onClick={updatePlanNow} disabled={updatingPlan} className="min-h-[40px] px-4 rounded-full bg-primary-600 hover:bg-primary-700 disabled:opacity-60 text-white font-medium cursor-pointer">
+                  {updatingPlan ? 'Updating…' : 'Update plan and open the schedule'}
+                </button>
+              )}
+            </div>
+          )}
 
           {logs.length > 0 ? (
             <ul className="mt-4 divide-y divide-border-subtle text-sm">
