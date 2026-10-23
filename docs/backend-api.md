@@ -181,6 +181,37 @@ Requires auth + ownership. `GET` → the same `Farm` shape as above. `DELETE` �
 schema's `onDelete: Cascade`). A non-owner (or non-existent id): **404**
 `{ "error": "Not found" }`.
 
+## `GET /overview`
+
+Requires auth. Everything the signed-in pages need to list a user's fields, in one request: every
+farm the user owns, oldest first, each with its `fields`, and on every field the newest soil test,
+newest plan and the 50 most recent fertilizer logs.
+
+```json
+{
+  "farms": [
+    {
+      "id": "farm_demo_1", "name": "Demo Farm 1 (Ludhiana)", "ownerId": "...", "createdAt": "...",
+      "fields": [
+        {
+          "id": "fld_demo_wheat_overuse", "name": "North wheat field", "farmId": "farm_demo_1",
+          "cropType": "wheat", "growthStage": "second_irrigation", "areaAcres": 4.5, "...": "same as GET /fields/:id",
+          "soilTest": { "id": "...", "n": 300, "p": 15, "k": 150, "ph": 7, "organicCarbon": 0.6, "moisture": 35, "testedOn": "..." },
+          "recommendation": { "id": "...", "fertilizerType": "urea", "schedule": [], "...": "same as GET /fields/:id/recommendations items" },
+          "fertilizerLogs": [ { "id": "...", "type": "urea", "quantityKgPerAcre": 150, "appliedOn": "..." } ]
+        }
+      ]
+    }
+  ]
+}
+```
+`soilTest` and `recommendation` are `null` when the field has none; a farm with no fields has
+`"fields": []`. It replaces one request per farm and three per field, which on a distant or sleeping
+server was the main reason pages loaded slowly. The per-resource routes are unchanged.
+
+`GET /reference/*` responses now carry `Cache-Control: private, max-age=300`, so a browser reuses them for
+five minutes instead of asking again on every page.
+
 ## `GET /farms/:farmId/fields` · `POST /farms/:farmId/fields`
 
 Requires auth + farm ownership. `POST` body (all but `name` optional):
