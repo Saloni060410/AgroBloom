@@ -1,13 +1,15 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate, useLocation, Link } from 'react-router-dom'
 import { AlertCircle, Eye, EyeOff, Mail, Lock, User } from 'lucide-react'
 import AuthLayout from '../../components/layout/AuthLayout.jsx'
 import { useUserStore } from '../../store/useUserStore.js'
 import AuthTabs from '../../components/layout/AuthTabs.jsx'
+import SlowLoadNotice from '../../components/ui/SlowLoadNotice.jsx'
+import { warmUpServer } from '../../services/warmUp.js'
 import { BRAND } from '../../components/brand/brand.js'
 
 const inputClass =
-  'w-full min-h-[48px] pl-11 pr-3 rounded-md border-2 border-border-default hover:border-border-strong focus:border-primary-600 bg-white text-ink-primary placeholder:text-ink-muted focus:outline-none'
+  'w-full min-h-[48px] short:min-h-[44px] pl-11 pr-3 rounded-md border-2 border-border-default hover:border-border-strong focus:border-primary-600 bg-white text-ink-primary placeholder:text-ink-muted focus:outline-none'
 
 export default function Register() {
   const [formData, setFormData] = useState({ name: '', email: '', password: '' })
@@ -15,6 +17,10 @@ export default function Register() {
   const [apiError, setApiError] = useState(null)
   const [showPassword, setShowPassword] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+
+  useEffect(() => {
+    warmUpServer()
+  }, [])
 
   const navigate = useNavigate()
   const location = useLocation()
@@ -101,7 +107,7 @@ export default function Register() {
     >
       <AuthTabs mode="register" state={location.state} />
 
-      <form onSubmit={handleSubmit} noValidate className="mt-5 space-y-4">
+      <form onSubmit={handleSubmit} noValidate className="mt-5 short:mt-3 space-y-4 short:space-y-3">
         {apiError && (
           <div role="alert" className="p-3 rounded-md border border-risk-high-border bg-risk-high-bg text-risk-high-text flex items-start gap-2 text-sm">
             <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" aria-hidden="true" />
@@ -116,10 +122,11 @@ export default function Register() {
         <button
           type="submit"
           disabled={isSubmitting}
-          className="w-full min-h-[50px] rounded-full bg-primary-600 hover:bg-primary-700 disabled:opacity-60 text-white text-base font-medium shadow-md transition-colors cursor-pointer"
+          className="w-full min-h-[50px] short:min-h-[46px] rounded-full bg-primary-600 hover:bg-primary-700 disabled:opacity-60 text-white text-base font-medium shadow-md transition-colors cursor-pointer"
         >
           {isSubmitting ? 'Creating account…' : 'Create account'}
         </button>
+        <SlowLoadNotice active={isSubmitting} afterMs={3000} />
 
         <p className="flex flex-wrap items-center justify-between gap-2 text-sm pt-1">
           <span className="font-medium text-ink-primary">Already registered?</span>

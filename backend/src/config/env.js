@@ -14,6 +14,10 @@ const schema = z.object({
   CORS_ORIGIN: z.string().default('http://localhost:5173'),
   ML_SERVICE_URL: z.string().url().default('http://localhost:8001'),
   ML_MODE: z.enum(['online', 'offline']).default('online'),
+  // bcrypt work factor for new password hashes. 12 is the default; 10 is the OWASP minimum and about four
+  // times faster, which matters on a host that gives the API a fraction of a CPU. A hash keeps the cost it
+  // was made with, so changing this never locks anyone out.
+  BCRYPT_COST: z.coerce.number().int().min(10).max(14).default(12),
   // How long to wait for the ML service. 5s is plenty when it is always running; a free host that
   // sleeps it needs about a minute for the first request after idle (see docs/DEPLOYMENT.md).
   ML_TIMEOUT_MS: z.coerce.number().int().positive().default(5000),

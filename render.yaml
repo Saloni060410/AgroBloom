@@ -26,6 +26,10 @@ services:
         value: data/external
       - key: MODEL_ARTIFACT_DIR
         value: models_artifacts
+      # Answer requests while the classifier (scikit-learn, most of the start-up time) loads in the background.
+      # A plan does not need it. Without this a cold start waits for it first.
+      - key: ML_LOAD_MODEL_IN_BACKGROUND
+        value: "true"
 
   # API. The image applies database migrations on every start.
   - type: web

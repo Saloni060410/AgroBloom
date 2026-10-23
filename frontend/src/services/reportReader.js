@@ -4,6 +4,10 @@
 // The heavy libraries are imported only when a report is actually read.
 
 export const MAX_REPORT_BYTES = 15 * 1024 * 1024
+// A Soil Health Card or lab sheet is one or two pages. A longer PDF is a document of some other kind, so
+// it is refused before any page is read or put through OCR (which takes minutes on a long scan).
+export const MAX_REPORT_PAGES = 8
+const READ_PAGES = 4
 export const REPORT_ACCEPT =
   'image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif,application/pdf,.pdf,.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document'
 
@@ -186,7 +190,12 @@ async function readPdf(file, onProgress) {
   } catch {
     throw new ReportError('That PDF could not be opened. It may be damaged or password protected.')
   }
-  const pages = Math.min(pdf.numPages, 6)
+  if (pdf.numPages > MAX_REPORT_PAGES) {
+    throw new ReportError(
+      `That PDF has ${pdf.numPages} pages. A soil report is one to a few pages, so this does not look like one. Nothing was read.`,
+    )
+  }
+  const pages = Math.min(pdf.numPages, READ_PAGES)
 
   // Most lab PDFs carry real text: read it directly, which is exact.
   let text = ''

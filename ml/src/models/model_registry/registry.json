@@ -580,6 +580,102 @@
       "git_sha": "1194584",
       "date": "2026-09-27T20:05:12.128601+00:00",
       "run_id": "20260927T200512Z"
+    },
+    {
+      "model_name": "rule-imitation-classifier",
+      "version": "0.1.0",
+      "kind": "rule_imitation",
+      "feature_set": "rule_imitation_v1",
+      "artifact": "models_artifacts/rule-imitation-classifier-0.1.0.joblib",
+      "labels": "models_artifacts/rule-imitation-classifier-0.1.0.labels.json",
+      "labels_note": "predict_proba columns follow this list; decode with labels[index]",
+      "teacher": "rule engine: compute_balance + to_products, main product = largest total across the schedule",
+      "samples": {
+        "drawn": 12000,
+        "skipped": 0,
+        "unique_used": 12000,
+        "train": 9600,
+        "held_out": 2400,
+        "class_counts": {
+          "urea": 8845,
+          "none": 2179,
+          "dap": 976
+        }
+      },
+      "cv_metrics": {
+        "accuracy": {
+          "mean": 0.989,
+          "std": 0.0022,
+          "folds": 5
+        }
+      },
+      "test_metrics": {
+        "agreement_with_rule_engine": 0.9908,
+        "agreement_ci95": [
+          0.9867,
+          0.9942
+        ],
+        "macro_f1": 0.9775,
+        "baseline_always_urea": 0.7371,
+        "per_class": {
+          "dap": {
+            "precision": 0.9832,
+            "recall": 0.9026,
+            "support": 195
+          },
+          "none": {
+            "precision": 1.0,
+            "recall": 0.9931,
+            "support": 436
+          },
+          "urea": {
+            "precision": 0.9894,
+            "recall": 1.0,
+            "support": 1769
+          }
+        },
+        "per_crop_agreement": {
+          "barley": 0.9551,
+          "chickpea": 0.9914,
+          "cotton": 1.0,
+          "maize": 0.9971,
+          "rice": 1.0,
+          "sugarcane": 1.0,
+          "wheat": 0.9915
+        },
+        "confusion_matrix": {
+          "labels": [
+            "dap",
+            "none",
+            "urea"
+          ],
+          "rows_are_rule_engine": [
+            [
+              176,
+              0,
+              19
+            ],
+            [
+              3,
+              433,
+              0
+            ],
+            [
+              0,
+              0,
+              1769
+            ]
+          ]
+        }
+      },
+      "dataset_source": "rule_engine_generated",
+      "dataset_hash": "80a37bd39585",
+      "config_hash": "bb8cd4210635",
+      "rules_hash": "9b4cd99a",
+      "seed": 42,
+      "git_sha": "99c8e94",
+      "date": "2026-10-23T07:04:02.105741+00:00",
+      "run_id": "20261023T070402Z"
     }
   ]
 }

@@ -1,12 +1,16 @@
 import bcrypt from 'bcrypt'
 import { z } from 'zod'
 import { prisma } from '../config/db.js'
+import { env } from '../config/env.js'
 import { issueTokenPair, rotateRefreshToken, revokeRefreshToken } from '../services/tokenService.js'
 
-const BCRYPT_COST = 12
-// Precomputed so login always runs a real bcrypt.compare, even for unknown
-// emails — keeps response timing the same whether or not the account exists.
-const DUMMY_HASH = bcrypt.hashSync('dummy-password-for-timing', BCRYPT_COST)
+const BCRYPT_COST = env.BCRYPT_COST
+// Login always runs a real bcrypt.compare, even for unknown emails, so the response takes the same time
+// whether or not the account exists. Made once, asynchronously, when first needed or at start-up: a
+// hashSync here froze the server for seconds on a small host before it could answer anything.
+let dummyHash = null
+const dummy = () => (dummyHash ??= bcrypt.hash('dummy-password-for-timing', BCRYPT_COST))
+dummy().catch(() => {})
 
 export const registerSchema = z.object({
   email: z.string().email(),
@@ -52,7 +56,7 @@ export async function login(req, res, next) {
   try {
     const { email, password } = req.body
     const user = await prisma.user.findUnique({ where: { email } })
-    const valid = await bcrypt.compare(password, user?.passwordHash ?? DUMMY_HASH)
+    const valid = await bcrypt.compare(password, user?.passwordHash ?? (await dummy()))
 
     if (!user || !valid) return res.status(401).json({ error: 'Invalid email or password' })
 

@@ -1,6 +1,6 @@
 import axios from 'axios'
 
-const baseURL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:4000/api'
+export const baseURL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:4000/api'
 // 10s is plenty for a server that is always running. A host that sleeps idle services needs about
 // a minute to wake the API and then the ML service, so a deployment can raise it at build time.
 const timeout = Number(import.meta.env.VITE_API_TIMEOUT_MS) || 10000

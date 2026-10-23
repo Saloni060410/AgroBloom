@@ -19,8 +19,10 @@ export default function ReportScanner({ soil, setSoil, onScanned }) {
     try {
       const { readings } = await readReport(file, (p) => setPhase((s) => (s.name === 'reading' ? { ...s, progress: p } : s)))
       const result = parseBest(readings)
-      if (!result.found.length) {
-        setPhase({ name: 'empty', fileName: file.name })
+      // Only a document that looks like a soil report may fill the meters: a journal paper or a notice
+      // can mention "nitrogen" and "pH" and carry numbers beside them.
+      if (!result.assessment.ok) {
+        setPhase({ name: 'empty', fileName: file.name, why: result.assessment.why })
         return
       }
       // Values the OCR was unsure of do not move a meter: a confident wrong number is worse than a blank.
@@ -107,7 +109,10 @@ export default function ReportScanner({ soil, setSoil, onScanned }) {
           <p role="alert" className="flex items-start gap-2 text-sm text-risk-med-text">
             <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" aria-hidden="true" />
             <span>
-              No soil values could be found in {phase.fileName}. For a photo, lay the card flat in good light with all of it in the frame. You can still set the meters by hand.
+              {phase.why === 'article' || phase.why === 'too-long'
+                ? `${phase.fileName} looks like an article or a long document, not a soil test report, so nothing was filled in.`
+                : `${phase.fileName} does not look like a soil test report, or its soil values could not be read, so nothing was filled in.`}{' '}
+              Use a Soil Health Card or lab sheet that lists nitrogen, phosphorus, potassium, pH and organic carbon. For a photo, lay it flat in good light with all of it in the frame. You can still set the meters by hand.
             </span>
           </p>
         )}
