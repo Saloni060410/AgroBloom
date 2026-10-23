@@ -56,6 +56,10 @@ def _ratio(applied: float, needed: float) -> float:
     return float("inf") if applied > 0 else 1.0
 
 
+def _finite_or_none(value: float, digits: int) -> float | None:
+    return None if math.isinf(value) else round(value, digits)
+
+
 def _pct(ratio: float) -> int | None:
     """A ratio as a whole percent, or None when it is infinite (the crop needs none of this
     nutrient but some was applied). round(inf * 100) raises OverflowError, which used to turn any
@@ -212,7 +216,9 @@ def score_planned(planned_application: list[dict], nutrient_balance: dict, soil:
         nutrient: {
             "applied_kg_ha": round(applied[nutrient], 2),
             "recommended_kg_ha": nutrient_balance[nutrient]["fertilizer_needed_kg_ha"],
-            "ratio": round(_ratio(applied[nutrient], nutrient_balance[nutrient]["fertilizer_needed_kg_ha"]), 3),
+            # None when the crop needs none of this nutrient but some is planned: the ratio is infinite, and an
+            # infinite number cannot be sent as JSON (it used to turn this case into an HTTP 500).
+            "ratio": _finite_or_none(_ratio(applied[nutrient], nutrient_balance[nutrient]["fertilizer_needed_kg_ha"]), 3),
         }
         for nutrient in ("n", "p", "k")
     }

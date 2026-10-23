@@ -159,13 +159,15 @@ Scores a farmer's own planned dose ("what if I apply this?"). Same soil, weather
     "over_application_pct": "number | null"
   },
   "nutrient_balance": {
-    "n": { "applied_kg_ha": 0.0, "recommended_kg_ha": 0.0, "ratio": 0.0 },
+    "n": { "applied_kg_ha": 0.0, "recommended_kg_ha": 0.0, "ratio": "number | null" },
     "p": { "...": "same keys" },
     "k": { "...": "same keys" }
   },
   "model_version": "string"
 }
 ```
+
+`ratio` is `null` when the crop needs none of that nutrient (`recommended_kg_ha` is 0) but some is planned: the ratio is infinite and cannot be sent as JSON. It is `1` when nothing is planned and none is needed.
 `recommended_kg_ha` is the `fertilizer_needed_kg_ha` the engine computes for the same inputs.
 
 ## GET /health
@@ -184,7 +186,7 @@ Read-only lists built from `ml/data/external/`. The backend proxies and caches t
 |---|---|
 | `/reference/crops` | `[{ id, name_en, name_hi, varieties: [{ id, name_en, name_hi }], stages: [{ id, name_en, name_hi, order }] }]` |
 | `/reference/soil-ratings` | low and high cut-offs per soil parameter, with units, and `very_low_below` where a source has that band |
-| `/reference/fertilizers` | `[{ id, name, n_pct, p2o5_pct, k2o_pct, price_inr_per_kg, price_date, bag_size_kg }]`. Only priced products. `bag_size_kg` is `null` when unknown |
+| `/reference/fertilizers` | `[{ id, name, n_pct, p2o5_pct, k2o_pct, price_inr_per_kg, price_date, bag_size_kg }]`. Every product the engine knows, including ones with no verified price: `price_inr_per_kg` and `price_date` are `null` for them, and `bag_size_kg` is `null` when unknown |
 | `/reference/seasonal-weather?lat=&lng=&month=` | a weather block with `source: "seasonal_average"`, used when live weather and cache both fail |
 
 ## How to change this contract

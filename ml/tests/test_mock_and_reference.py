@@ -285,7 +285,9 @@ def test_real_mode_reads_the_tables(use_settings, tmp_path):
     assert ratings[0]["very_low_below"] is None
 
     products = client.get("/reference/fertilizers").json()
-    assert [p["id"] for p in products] == ["urea"]  # an unpriced product is never offered
+    assert [p["id"] for p in products] == ["urea", "mop"]  # an unpriced product is listed too, with no price
+    assert products[0]["price_inr_per_kg"] == 5.92
+    assert products[1]["price_inr_per_kg"] is None and products[1]["k2o_pct"] == 60
 
 
 def test_real_mode_seasonal_weather_picks_the_nearest_region(use_settings, tmp_path):

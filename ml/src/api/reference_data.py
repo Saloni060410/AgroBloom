@@ -139,14 +139,15 @@ def load_soil_ratings(directory: Path) -> list[SoilRating]:
 
 
 def load_fertilizers(directory: Path) -> list[FertilizerProduct]:
-    """Only products with a price are returned. The engine can plan a product with no price (single
-    superphosphate for sugarcane), which therefore has no entry here: see docs/data-dictionary.md."""
+    """Every product with known nutrient percentages. One with no verified price is returned with a null
+    price (and null price date and bag size): the engine can plan it (single superphosphate for sugarcane)
+    and a farmer can log or check it, so the app must know its name and nutrients. See docs/data-dictionary.md."""
     rows = _read(directory, "fertilizer_products.csv", {"product_id", "name", "n_pct", "p2o5_pct", "k2o_pct", "price_inr_per_kg"})
     products = []
     for row in rows:
         price = _number(row["price_inr_per_kg"])
         n, p, k = _number(row["n_pct"]), _number(row["p2o5_pct"]), _number(row["k2o_pct"])
-        if price is None or n is None or p is None or k is None:
+        if n is None or p is None or k is None:
             continue
         products.append(
             FertilizerProduct(
