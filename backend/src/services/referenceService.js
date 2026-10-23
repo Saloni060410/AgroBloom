@@ -12,6 +12,9 @@ const STALE_MS = 24 * 60 * 60_000  // 24 hours
 
 const client = axios.create({ baseURL: env.ML_SERVICE_URL, timeout: env.ML_TIMEOUT_MS })
 const cache = new Map() // key -> { data, fetchedAt }
+const inflight = new Map() // key -> the request already on its way, so concurrent callers share it
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 
 export class ReferenceUnavailableError extends Error {
   constructor(message = 'Reference data is unavailable') {
@@ -33,6 +36,36 @@ function loadDevFallback() {
   return devFallback
 }
 
+// A failure that comes back quickly (connection refused or reset, a 5xx from the host's proxy) is what a
+// service that is still starting looks like, and trying again a few seconds later works. A timeout has
+// already waited as long as we are willing to, and a 4xx will not get better.
+function worthRetrying(err) {
+  if (err.response) return err.response.status >= 500
+  return err.code !== 'ECONNABORTED' && err.code !== 'ETIMEDOUT'
+}
+
+async function fetchWithRetry(mlPath, params) {
+  const delays = env.ML_RETRY_DELAYS_MS
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      const { data } = await client.get(mlPath, params ? { params } : undefined)
+      return data
+    } catch (err) {
+      if (attempt >= delays.length || !worthRetrying(err)) throw err
+      await sleep(delays[attempt])
+    }
+  }
+}
+
+// One request per key at a time: the soil-test page asks for crops, ratings and fertilizers together, and
+// several people can arrive while the ML service is waking up. They wait for the same answer.
+function fetchShared(key, mlPath, params) {
+  if (!inflight.has(key)) {
+    inflight.set(key, fetchWithRetry(mlPath, params).finally(() => inflight.delete(key)))
+  }
+  return inflight.get(key)
+}
+
 async function getCached(key, mlPath) {
   const entry = cache.get(key)
   const now = Date.now()
@@ -42,8 +75,8 @@ async function getCached(key, mlPath) {
   }
 
   try {
-    const { data } = await client.get(mlPath)
-    cache.set(key, { data, fetchedAt: now })
+    const data = await fetchShared(key, mlPath)
+    cache.set(key, { data, fetchedAt: Date.now() })
     return data
   } catch {
     if (entry && now - entry.fetchedAt < STALE_MS) {
@@ -96,12 +129,8 @@ export async function seasonalWeather(lat, lng, month) {
   }
 
   try {
-    const { data } = await client.get(
-      '/reference/seasonal-weather',
-      { params: { lat, lng, month } }
-    )
-
-    cache.set(key, { data, fetchedAt: now })
+    const data = await fetchShared(key, '/reference/seasonal-weather', { lat, lng, month })
+    cache.set(key, { data, fetchedAt: Date.now() })
     return data
   } catch {
     if (entry && now - entry.fetchedAt < STALE_MS) {
@@ -112,4 +141,11 @@ export async function seasonalWeather(lat, lng, month) {
       'ML service unreachable and no cached seasonal weather'
     )
   }
+}
+
+// Fetches the three lists the screens need as soon as the server is up, so the cache is warm before the
+// first person opens a page. On a host that sleeps the ML service this also wakes it. Failures are left
+// for the first real request to report: it retries on its own.
+export async function warmReferenceCache() {
+  await Promise.allSettled([getCrops(), getSoilRatings(), getFertilizers()])
 }
