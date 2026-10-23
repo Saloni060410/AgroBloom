@@ -49,7 +49,12 @@ export default function FieldProfile() {
 
   const field = h.field
   const crop = h.crops.find((c) => c.id === field?.cropType)
-  const stages = crop?.stages || []
+  // The stage list comes from the crop reference data. If that is not available the dropdown still shows the
+  // field's current stage, so it is never an empty box.
+  const knownStages = crop?.stages || []
+  const stages = knownStages.length || !field?.growthStage
+    ? knownStages
+    : [{ id: field.growthStage, name_en: titleCase(field.growthStage) }]
   const [edit, setEdit] = useState(null) // { fieldId, value, sowing, saved } for the field being edited
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState(null)
@@ -179,7 +184,7 @@ export default function FieldProfile() {
         <p className="text-sm text-ink-secondary mt-1">The plan is built for this stage. Move it forward as the crop grows, then run the model again.</p>
         <div className="mt-3 flex flex-wrap items-center gap-3">
           <label htmlFor="stage-select" className="sr-only">Growth stage</label>
-          <select id="stage-select" value={stage} onChange={(e) => setEdit({ fieldId, value: e.target.value, sowing, saved: false })} disabled={!stages.length} className="min-h-[46px] px-4 rounded-md border-2 border-border-default focus:border-primary-600 bg-white text-sm font-medium focus:outline-none cursor-pointer">
+          <select id="stage-select" value={stage} onChange={(e) => setEdit({ fieldId, value: e.target.value, sowing, saved: false })} disabled={!knownStages.length} className="min-h-[46px] px-4 rounded-md border-2 border-border-default focus:border-primary-600 bg-white text-sm font-medium focus:outline-none cursor-pointer">
             {stages.map((s) => (
               <option key={s.id} value={s.id}>{s.name_en}</option>
             ))}

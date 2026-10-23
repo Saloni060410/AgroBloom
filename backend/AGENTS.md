@@ -50,3 +50,12 @@ npm run dev
 ```
 
 `docker-compose up` at the repo root starts Postgres + this service + the ML service together.
+
+### Tests use their own database
+
+`npm test` runs on `<your database>_test` (for example `khetgpt_test`), never on the database the app uses:
+the tests empty the users, farms and fields tables, which used to wipe the demo farmer and any fields
+created in the running app. `scripts/run-tests.mjs` derives the name from `DATABASE_URL`, applies the
+migrations to it, and runs the tests there. If the database user may not create databases, create it once
+with an admin account: `createdb -O <user> khetgpt_test`. In CI (`CI=true`) `DATABASE_URL` is already a
+throwaway database and is used as it is.

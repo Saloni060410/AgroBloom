@@ -6,6 +6,7 @@ import { BRAND } from '../brand/brand.js'
 import Drawer from './Drawer.jsx'
 import UserMenu from './UserMenu.jsx'
 import { useActiveField } from '../../hooks/useActiveField.js'
+import { preloadSignedInPages } from '../../utils/preloadPages.js'
 import { useFieldStatusSync } from '../../hooks/useFieldStatusSync.js'
 import { useFieldStatusStore } from '../../store/useFieldStatusStore.js'
 import SoilTestPrompt from '../soil/SoilTestPrompt.jsx'
@@ -97,6 +98,11 @@ export default function SidebarShell() {
     setPrevPath(pathname)
     setOpen(false)
   }
+
+  // Fetch the other pages' code in the background so moving between pages does not wait for a download.
+  useEffect(() => {
+    preloadSignedInPages()
+  }, [])
 
   // New page, start at the top (the sidebar persists, so the browser would not do it).
   useEffect(() => {

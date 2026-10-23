@@ -1,3 +1,4 @@
+import { PASSWORD_MIN_LENGTH, serverFieldErrors } from '../../utils/authForm.js'
 import { useEffect, useState } from 'react'
 import { useNavigate, useLocation, Link } from 'react-router-dom'
 import { AlertCircle, Eye, EyeOff, Mail, Lock, User } from 'lucide-react'
@@ -32,7 +33,7 @@ export default function Register() {
     if (!formData.email.trim()) errors.email = 'Email address is required.'
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) errors.email = 'Enter a valid email address.'
     if (!formData.password) errors.password = 'Password is required.'
-    else if (formData.password.length < 8) errors.password = 'Password must be at least 8 characters.'
+    else if (formData.password.length < PASSWORD_MIN_LENGTH) errors.password = `Password must be at least ${PASSWORD_MIN_LENGTH} characters.`
     setFieldErrors(errors)
     return Object.keys(errors).length === 0
   }
@@ -58,7 +59,14 @@ export default function Register() {
       })
       navigate(location.state?.from?.pathname || '/overview', { replace: true })
     } catch (err) {
-      setApiError(err.message || 'Registration failed. Check your details and try again.')
+      // The server names the field that failed: show it next to that field, not as a bare banner.
+      const serverErrors = serverFieldErrors(err.details)
+      if (Object.keys(serverErrors).length > 0) {
+        setFieldErrors(serverErrors)
+        setApiError('Check the highlighted fields and try again.')
+      } else {
+        setApiError(err.message || 'Registration failed. Check your details and try again.')
+      }
     } finally {
       setIsSubmitting(false)
     }
@@ -117,7 +125,7 @@ export default function Register() {
 
         {field('reg-name', 'Full name', User, { name: 'name', type: 'text', autoComplete: 'name', placeholder: 'Ramesh Patel' }, fieldErrors.name)}
         {field('reg-email', 'Email address', Mail, { name: 'email', type: 'email', autoComplete: 'email', placeholder: 'you@example.com' }, fieldErrors.email)}
-        {field('reg-password', 'Password', Lock, { name: 'password', type: 'password', autoComplete: 'new-password', placeholder: 'At least 8 characters' }, fieldErrors.password)}
+        {field('reg-password', 'Password', Lock, { name: 'password', type: 'password', autoComplete: 'new-password', placeholder: `At least ${PASSWORD_MIN_LENGTH} characters` }, fieldErrors.password)}
 
         <button
           type="submit"
