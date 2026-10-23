@@ -28,7 +28,7 @@ Frontend (React + Vite)  --REST-->  Backend (Express + Prisma + Postgres)  --RES
 
 - The frontend only talks to the backend. The ML service never touches the database.
 - The backend owns accounts, fields, soil tests, logs and saved plans, and builds the request for the ML service.
-- The ML service is stateless: the dose engine, product choice, schedule, risk and cost, with a small product classifier whose guess is shown but never overrides the rule-based plan.
+- The ML service is stateless: the dose engine, product choice, schedule, risk and cost, with a small product classifier that has learned the rule engine's choices (about 99% agreement on held-out requests) and whose note is shown but never overrides the rule-based plan.
 
 ## Run it locally
 
@@ -53,7 +53,7 @@ docker compose exec backend npm run db:seed:demo   # three demo farms with plans
 | ML service | http://localhost:8001 (`/health`, `/docs`) |
 | Postgres | localhost:5432 (user, password and database all `khetgpt`) |
 
-The backend runs its database migrations every time it starts. The ML image trains the product classifier while it is built, so `/health` reports `ok`. Without a model (a service started from source before `python -m src.models.train`) it reports `degraded` and still answers every request from its rule-based calculator.
+The backend runs its database migrations every time it starts. The ML image trains the product classifier while it is built (a few seconds), so `/health` reports `ok`. Without a model (a service started from source before `python -m src.models.train`) it reports `degraded` and still answers every request from its rule-based calculator.
 
 ### Without Docker
 
@@ -126,7 +126,7 @@ Region, crop, price and threshold numbers live in data files under `ml/data/exte
 - Soil profile reference: ISRIC SoTWIS (Indo-Gangetic Plain).
 - Weather and geocoding: Open-Meteo.
 
-Only crops with a complete published dose table are offered (wheat, rice, maize, cotton, sugarcane, chickpea, barley). The product classifier was trained on synthetic data because real labelled data was not available, which is why the rule-based plan always wins over it. Cells still waiting on a published value are marked `TODO(data)` in the reference tables and are never guessed.
+Only crops with a complete published dose table are offered (wheat, rice, maize, cotton, sugarcane, chickpea, barley). The product classifier is trained to imitate the rule engine (its agreement score measures imitation, not agronomic correctness; see `ml/MODEL_CARD_RULE_IMITATION.md`), because real labelled data was not available. The rule-based plan always wins over it. Cells still waiting on a published value are marked `TODO(data)` in the reference tables and are never guessed.
 
 ## Deploying
 

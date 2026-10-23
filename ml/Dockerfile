@@ -16,14 +16,13 @@ COPY configs ./configs
 COPY data/external ./data/external
 
 # The product classifier. models_artifacts/ is git-ignored (the team rule is never to commit model
-# files), so the image trains it from the synthetic dataset that IS in the repo: build the training
-# table, then train. Same seed and config as a local run (configs/*.yaml, seed 42), so it is the
-# same recipe the local model comes from. Takes about a minute. Without it the service still answers
-# every request from the rule-based engine and reports "degraded" on /health.
-COPY data/raw/fertilizer_prediction_synthetic.csv ./data/raw/fertilizer_prediction_synthetic.csv
-RUN python -m src.data_pipeline.build_dataset --config configs/data.yaml \
- && python -m src.models.train --config configs/train.yaml \
- && rm -rf data/raw data/processed
+# files), so the image trains its own: the rule-imitation model, which learns the rule engine's main
+# product from random requests the engine itself labels (src/models/train_imitation.py, seed and config
+# in configs/imitation.yaml). It needs only the reference data copied above and takes a few seconds.
+# Without it the service still answers every request from the rule-based engine and /health says "degraded".
+# A failed training fails the build, rather than shipping an image with no model.
+RUN python -W ignore -m src.models.train_imitation --config configs/imitation.yaml \
+ && rm -rf models_artifacts/runs
 
 # Non-root: nothing in this service needs root, and a dependency RCE shouldn't get it either.
 RUN useradd --create-home --uid 1000 appuser && chown -R appuser:appuser /app
