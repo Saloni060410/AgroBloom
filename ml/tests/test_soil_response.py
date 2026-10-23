@@ -12,6 +12,7 @@ from datetime import date
 import pytest
 
 from src.api.schemas import RecommendRequest
+from src.engine import recommendation_engine as engine_module
 from src.engine.recommendation_engine import Engine, recommend
 
 TODAY = date(2026, 10, 22)
@@ -166,3 +167,14 @@ def test_a_missing_factor_table_means_the_standard_dose_not_a_crash():
 
 def test_the_note_says_the_band_rule_is_not_a_pau_figure(engine):
     assert "not a PAU figure" in band_note(plan(engine, n=600))
+
+
+def test_a_classifier_trained_on_other_rules_is_left_out_and_health_says_why(monkeypatch):
+    stale = Engine()
+    if stale.model is None:
+        pytest.skip("no classifier trained in this checkout")
+    monkeypatch.setattr(engine_module, "_rules_hash8", lambda: "00000000")
+    again = Engine()
+    assert again.model is None and again.model_stale and again.status == "degraded"
+    assert "older rules" in again.status_detail
+    assert doses(plan(again)) == doses(plan(stale))  # the plan itself never depended on it

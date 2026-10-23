@@ -99,7 +99,9 @@ lowest).
   product can differ. In the end-to-end check 5 of 500 requests differed (all at the first stage); I did
   not isolate whether those inputs were the cause.
 - It is accurate only for the rules it was trained on. Any change to `data/external/` or to the engine
-  changes the rules hash, and the model must be retrained (see below).
+  changes the rules hash, and the model must be retrained (see below). The engine enforces this: at load
+  it compares the model's recorded `rules_hash` with the current one, leaves a mismatched model out and
+  reports `degraded` on `/health` with the retrain command. Plans are unaffected.
 - The note it produces is no longer an independent check, so a reader should not treat "the classifier
   agreed" as a second opinion.
 

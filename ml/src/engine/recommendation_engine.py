@@ -86,6 +86,7 @@ class LoadedModel:
     labels: list[str]
     dataset_source: str  # "real" | "fallback" -- carried through so a caller can tell
     feature_set: str | None = None  # None: the original inputs (build_features); else see models/imitation_features
+    rules_hash: str | None = None  # the rules the model was trained on; None for models that did not record it
 
 
 # A loaded model per artifact file. The service builds its engine twice at start-up (once when the module
@@ -131,6 +132,7 @@ def _load_active_model() -> LoadedModel | None:
             labels=json.loads(labels_path.read_text()),
             dataset_source=entry.get("dataset_source", "unknown"),
             feature_set=entry.get("feature_set"),
+            rules_hash=entry.get("rules_hash"),
         )
     except (OSError, json.JSONDecodeError, KeyError, IndexError):
         return None
@@ -156,24 +158,33 @@ class Engine:
         # plans carry no classifier note and /health says so. Off by default, so tests and local runs are unchanged.
         self.model: LoadedModel | None = None
         self.model_loading = False
+        self.model_stale = False
         if self._startup_error is None:
             if os.environ.get("ML_LOAD_MODEL_IN_BACKGROUND", "").lower() == "true":
                 self.model_loading = True
                 threading.Thread(target=self._load_model_in_background, name="load-classifier", daemon=True).start()
             else:
-                self.model = _load_active_model()
+                self.model = self._load_current_model()
         self._rules_hash = _rules_hash8() if self._startup_error is None else None
+
+    def _load_current_model(self) -> LoadedModel | None:
+        """The active classifier, unless it was trained on other rules than the ones loaded now. It learns the
+        rules, so after a change to data/external/ it would give an opinion about a plan the engine no longer
+        makes; it is left out (and /health says why) until it is retrained. The plan never depends on it."""
+        model = _load_active_model()
+        self.model_stale = model is not None and model.rules_hash is not None and model.rules_hash != _rules_hash8()
+        return None if self.model_stale else model
 
     def _load_model_in_background(self) -> None:
         try:
-            self.model = _load_active_model()
+            self.model = self._load_current_model()
         finally:
             self.model_loading = False
 
     def refresh_model(self) -> None:
         """Re-checks the registry for a newer model without restarting the service. Not
         wired to an endpoint yet -- useful for tests and for a future admin/reload hook."""
-        self.model = _load_active_model()
+        self.model = self._load_current_model()
 
     @property
     def status(self) -> Literal["ok", "degraded"]:
@@ -185,6 +196,11 @@ class Engine:
             return f"reference data unavailable: {self._startup_error}"
         if self.model is None and self.model_loading:
             return "the classifier model is still loading; plans are unaffected"
+        if self.model_stale:
+            return (
+                "the classifier was trained on older rules than the ones loaded, so it is not used; "
+                "retrain it with `python -m src.models.train_imitation --config configs/imitation.yaml`. Plans are unaffected"
+            )
         if self.model is None:
             return "no classifier model is registered yet in model_registry/registry.json"
         return None
