@@ -306,7 +306,9 @@ are noted in each row for context but never substituted for a retail price. **A 
 never treated as 0 in a comparison.** The engine does recommend a product that has no price (single
 superphosphate for sugarcane, for example), because the right product matters more than being able to
 cost it. The cost shown then leaves that product out and says so in the plan's data notes, and the
-saving against earlier applications is left unknown rather than computed from a partial cost.
+saving against earlier applications is left unknown rather than computed from a partial cost. `GET
+/reference/fertilizers` lists such a product with a `null` price, so the app can name it, log it and check a plan
+that uses it.
 
 ### phosphorus_sources.csv
 
@@ -324,8 +326,7 @@ only single superphosphate), and the engine uses the first one listed.
 
 Nitrogen carried by the phosphorus product is credited against urea, so a product without nitrogen
 (single superphosphate) means more urea. The soil schema has no sulphur reading, so the engine cannot
-tell whether sulphur is short; the plan only mentions that single superphosphate supplies it. The
-chickpea row is confirmed only by secondary sources (`TODO(data)`: check PAU's gram table).
+tell whether sulphur is short; the plan only mentions that single superphosphate supplies it. Gram lists only single superphosphate, so, like sugarcane, it plans that.
 
 ### soil_test_ratings.csv
 

@@ -396,12 +396,12 @@ def _data_notes(rule_trace: list[dict], weather_source: str) -> list[str]:
     return notes
 
 
-def _product_notes(schedule: list[dict], request: RecommendRequest, tables) -> list[str]:
+def _product_notes(schedule: list[dict], request: RecommendRequest, tables, plan_with) -> list[str]:
     """What the plan leaves the farmer to decide: the same phosphorus from another product (PAU lists
     DAP, single superphosphate and, for wheat and maize, nitrophosphate), and a variety with its own dose."""
     notes = []
     crop = request.crop_type.replace("_", " ")
-    alternatives = phosphorus_alternatives(schedule, request.crop_type, tables)
+    alternatives = phosphorus_alternatives(schedule, request.crop_type, tables, plan_with)
     if alternatives:
         parts = []
         for option in alternatives["options"]:
@@ -455,19 +455,23 @@ def recommend(request: RecommendRequest, engine: Engine, today: date | None = No
     if stage_trace:
         rule_trace.append(stage_trace)
 
-    schedule = to_products(
-        balance,
-        request.crop_type,
-        stage_used,
-        request.sowing_date,
-        payload["weather"],
-        engine.tables,
-        today,
-        rain_hold_mm=engine.rules["rain_hold_mm"],
-        rain_hold_days=engine.rules["rain_hold_days"],
-        recent_rain_mm=recent_rain(rainfall, today, engine.rules["recent_rain_hold_days"]) if rainfall else 0.0,
-    )  # raises ReferenceDataIncomplete -> 503 only if a needed product has no ROW at all;
-    # an unpriced-but-known product (e.g. MOP, see cost.py) is still scheduled here.
+    def schedule_for(p_product: str | None = None) -> list[dict]:
+        return to_products(
+            balance,
+            request.crop_type,
+            stage_used,
+            request.sowing_date,
+            payload["weather"],
+            engine.tables,
+            today,
+            rain_hold_mm=engine.rules["rain_hold_mm"],
+            rain_hold_days=engine.rules["rain_hold_days"],
+            recent_rain_mm=recent_rain(rainfall, today, engine.rules["recent_rain_hold_days"]) if rainfall else 0.0,
+            p_product=p_product,
+        )
+
+    schedule = schedule_for()  # raises ReferenceDataIncomplete -> 503 only if a needed product has no ROW at all;
+    # an unpriced-but-known product (e.g. SSP, see cost.py) is still scheduled here.
 
     primary_product, primary_quantity = _primary_product(schedule)
     classifier_opinion = _classifier_opinion(engine, features, request, stage_used, today)
@@ -532,7 +536,7 @@ def recommend(request: RecommendRequest, engine: Engine, today: date | None = No
             # there as well as in history_insights (no client change needed to see them).
             data_notes=_data_notes(rule_trace, payload["weather"]["source"])
             + [item["text"] for item in insights]
-            + _product_notes(schedule, request, engine.tables)
+            + _product_notes(schedule, request, engine.tables, schedule_for)
             + _unpriced_product_notes(schedule, breakdown_lines, products_table),
             history_insights=insights,
             stage_used=stage_used,

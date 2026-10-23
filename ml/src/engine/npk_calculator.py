@@ -457,34 +457,40 @@ def phosphorus_sources(tables: ReferenceTables, crop_id: str) -> tuple[str, list
     return "dap", []
 
 
-def phosphorus_alternatives(schedule: list[dict], crop_id: str, tables: ReferenceTables) -> dict | None:
+def phosphorus_alternatives(schedule: list[dict], crop_id: str, tables: ReferenceTables, plan_with) -> dict | None:
     """The same phosphorus supplied by each alternative product, for the farmer who cannot get the first one.
-    The schedule's phosphorus line fixes how much P2O5 is needed; each alternative's quantity follows from its
-    P2O5 share, and the urea changes by the difference in nitrogen the two products carry (a product with N
-    replaces some urea; one without it does not). Quantities are kg per acre. None when the plan has no
-    phosphorus product or the crop lists no alternatives."""
+    `plan_with(product_id)` is the plan rebuilt with that phosphorus product (to_products with the same
+    inputs), so the quantity and the change in urea are exactly what that plan would say: they account for
+    the nitrogen the product carries, for nitrogen already credited from earlier applications, and for urea
+    that was never needed. Quantities are kg per acre. None when the plan has no phosphorus product or the
+    crop lists no alternatives."""
     primary_id, alternative_ids = phosphorus_sources(tables, crop_id)
     products = _fertilizer_products(tables)
     line = next((item for item in schedule if item["fertilizer_type"] == primary_id), None)
     if line is None or not alternative_ids or primary_id not in products:
         return None
+
+    def urea_of(plan: list[dict]) -> float:
+        return sum(item["quantity_kg_per_acre"] for item in plan if item["fertilizer_type"] == "urea")
+
     primary = products[primary_id]
     p2o5_kg = line["quantity_kg_per_acre"] * float(primary["p2o5_pct"]) / 100
-    urea_n = float(products["urea"]["n_pct"]) / 100 if "urea" in products else None
     options = []
     for product_id in alternative_ids:
         product = products.get(product_id)
         if product is None or float(product["p2o5_pct"]) <= 0:
             continue
-        quantity = p2o5_kg / (float(product["p2o5_pct"]) / 100)
-        n_difference = (line["quantity_kg_per_acre"] * float(primary["n_pct"]) - quantity * float(product["n_pct"])) / 100
+        plan = plan_with(product_id)
+        alt_line = next((item for item in plan if item["fertilizer_type"] == product_id), None)
+        if alt_line is None:
+            continue
         options.append(
             {
                 "product_id": product_id,
                 "name": product["name"],
-                "quantity_kg_per_acre": round(quantity, 1),
+                "quantity_kg_per_acre": round(alt_line["quantity_kg_per_acre"], 1),
                 # more urea (+) when the alternative carries less nitrogen than the first product, less (-) when more
-                "urea_change_kg_per_acre": round(n_difference / urea_n, 1) if urea_n else None,
+                "urea_change_kg_per_acre": round(urea_of(plan) - urea_of(schedule), 1),
             }
         )
     if not options:
@@ -503,6 +509,7 @@ def to_products(
     rain_hold_mm: float | None = None,
     rain_hold_days: int | None = None,
     recent_rain_mm: float = 0.0,
+    p_product: str | None = None,
 ) -> list[dict]:
     """Splits nutrient_balance's fertilizer_needed_kg_ha across the stages not yet passed
     (split_schedule.csv), dates each stage from growth_stages.csv das_start counted from
@@ -523,7 +530,9 @@ def to_products(
 
     Nitrogen top-dressing (urea) is delayed by rain_hold_days when rainfall_mm_forecast is at
     or above rain_hold_mm, or when recent_rain_mm (rain that actually fell in the last few days)
-    is: saturated soil loses nitrogen the same way a coming downpour would make it."""
+    is: saturated soil loses nitrogen the same way a coming downpour would make it.
+
+    p_product replaces the crop's usual phosphorus product (used to price out the alternatives)."""
     rain_hold_mm = 20.0 if rain_hold_mm is None else rain_hold_mm
     rain_hold_days = 2 if rain_hold_days is None else rain_hold_days
     products = _fertilizer_products(tables)
@@ -577,7 +586,7 @@ def to_products(
 
     if p_lines and nutrient_balance["p"]["fertilizer_needed_kg_ha"] > 0:
         line = p_lines[0]
-        p_product_id, _ = phosphorus_sources(tables, crop_id)
+        p_product_id = p_product or phosphorus_sources(tables, crop_id)[0]
         product = product_row(p_product_id, "p")
         p_needed = nutrient_balance["p"]["fertilizer_needed_kg_ha"] * line.fraction
         quantity = round(p_needed / ACRES_PER_HECTARE / (float(product["p2o5_pct"]) / 100), 3)

@@ -109,7 +109,8 @@ def test_the_note_names_the_band_and_the_effect(engine):
 def test_the_note_lists_the_right_nutrients_per_crop(engine):
     assert "nitrogen 300" in band_note(plan(engine, crop="rice", stage="transplanting")) and "phosphorus" not in band_note(plan(engine, crop="rice", stage="transplanting"))
     maize = band_note(plan(engine, crop="maize"))
-    assert "nitrogen, phosphorus and potassium" in maize
+    # maize potassium has a PAU rule (only when the soil test is low), so only N and P follow the band rule
+    assert "nitrogen and phosphorus" in maize and "potassium" not in maize
     # sugarcane has published phosphorus and potassium adjustments, so only nitrogen is banded
     stage = next(r["stage_id"] for r in engine.tables.growth_stages if r["crop_id"] == "sugarcane")
     sugarcane = band_note(plan(engine, crop="sugarcane", stage=stage))

@@ -7,7 +7,7 @@ with the rules at most about four times in five. This model sees the stage too. 
 look at moves the main product much. The labels are now every product in the plan, and then what the
 farmer already applied matters: enough nitrogen from an earlier application removes the urea, enough
 phosphorus removes the DAP. Measured on the same draws, a forest that cannot see earlier applications
-agrees with the plan on about 96.8% of requests, and one that sees them on about 100%. So the nitrogen,
+agrees with the plan on about 96.2% of held-out requests, and one that sees them on about 99.2%. So the nitrogen,
 phosphorus and potassium applied within the credit window are inputs, as plain kg/ha with no efficiency
 or rain logic, which it has to learn. pH, organic carbon and moisture are not: they move no dose.
 
