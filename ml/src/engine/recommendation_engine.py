@@ -295,8 +295,21 @@ def _effective_stage(engine: Engine, request: RecommendRequest, today: date) -> 
     }
 
 
+_NUTRIENT_NAMES = {"n": "nitrogen", "p": "phosphorus", "k": "potassium"}
+
+
 def _data_notes(rule_trace: list[dict], weather_source: str) -> list[str]:
     notes = []
+    unadjusted = [e for e in rule_trace if e["rule_id"] == "no_soil_adjustment_published"]
+    if unadjusted:
+        names = [_NUTRIENT_NAMES[e["nutrient"]] for e in unadjusted]
+        names = names[0] if len(names) == 1 else ", ".join(names[:-1]) + " and " + names[-1]
+        crop = unadjusted[0]["params"]["crop_id"]
+        notes.append(
+            f"For {crop}, the Punjab Agricultural University publishes no soil-test adjustment for {names}. "
+            f"Those doses stay at the standard published dose whatever the soil test reads; "
+            f"your soil values still set the soil ratings shown."
+        )
     for entry in rule_trace:
         if entry["rule_id"] == "stage_advanced_from_sowing_date":
             p = entry["params"]

@@ -137,6 +137,15 @@ def _soil_adjustment(tables: ReferenceTables, crop_id: str, nutrient: str, ratin
     return 0.0
 
 
+def _has_published_adjustment(tables: ReferenceTables, crop_id: str, nutrient: str) -> bool:
+    """True if the source publishes a soil-test adjustment for this crop and nutrient at any rating. A row
+    whose cells are still TODO(data) does not count: it marks a table that was looked for and not found."""
+    return any(
+        row["crop_id"] == crop_id and row["nutrient"] == nutrient and _parse_float(row["adjustment_kg_ha"]) is not None
+        for row in tables.soil_adjustments
+    )
+
+
 def _efficiency(tables: ReferenceTables, crop_id: str, nutrient: str) -> float | None:
     """The crop's own row if it has a usable value, else the default row. None if neither
     exists or both are TODO(data) -- the caller skips crediting in that case."""
@@ -343,6 +352,18 @@ def compute_balance(
                     "params": {"variety_id": dose_row["variety_id"], "irrigation": irrigation},
                 }
             )
+            if not _has_published_adjustment(tables, crop_id, nutrient):
+                # Said once so the farmer is told why the dose does not follow this soil value.
+                trace.append(
+                    {
+                        "rule_id": "no_soil_adjustment_published",
+                        "nutrient": nutrient,
+                        "value": soil[nutrient],
+                        "threshold": rating,
+                        "effect": "+0.0 kg/ha",
+                        "params": {"soil_rating": rating, "crop_id": crop_id},
+                    }
+                )
             if adjustment != 0:
                 trace.append(
                     {
