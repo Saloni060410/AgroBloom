@@ -85,14 +85,32 @@ def test_basal_phosphorus_and_potash_are_dated_to_the_first_day(engine):
     assert "Drill all the phosphorus and potash at sowing" in lines(response, "dap")[0].timing_note
 
 
-def test_a_stage_with_no_sourced_days_has_the_instruction_but_no_invented_date(engine):
-    """PAU gives no day count for the first irrigation or the knee-high stage."""
+def test_a_stage_with_no_pau_day_count_gets_an_approximate_date_that_says_it_is_one(engine):
+    """PAU gives no day count for the first irrigation, the knee-high stage and the like. The farmer still gets a
+    best-before date for each dose, from an estimate in growth_stages.csv, and the note says it is an estimate."""
     wheat = plan(engine, "wheat", "sowing", "2026-11-05", date(2026, 11, 1))
     first = lines(wheat, "urea", "crown_root_initiation")[0]
-    assert first.apply_by is None and first.timing_note == "Broadcast urea with the first irrigation."
+    assert first.apply_by == date(2026, 11, 5) + timedelta(days=28)
+    assert first.timing_note.startswith("Broadcast urea with the first irrigation.")
+    assert "an estimate" in first.timing_note
     maize = plan(engine, "maize", "sowing", "2026-07-01", date(2026, 6, 28))
     knee = lines(maize, "urea", "knee_high")[0]
-    assert knee.apply_by is None and "knee-high" in knee.timing_note
+    assert knee.apply_by == date(2026, 7, 1) + timedelta(days=35) and "knee-high" in knee.timing_note and "an estimate" in knee.timing_note
+
+
+def test_a_stage_with_a_pau_day_count_is_never_called_an_estimate(engine):
+    wheat = plan(engine, "wheat", "sowing", "2026-11-05", date(2026, 11, 1))
+    assert "estimate" not in lines(wheat, "urea", "second_irrigation")[0].timing_note
+    assert "estimate" not in lines(wheat, "dap", "sowing")[0].timing_note
+
+
+@pytest.mark.parametrize("crop,stage", [("wheat", "sowing"), ("rice", "nursery_sowing"), ("maize", "sowing"), ("cotton", "sowing"), ("sugarcane", "planting"), ("chickpea", "sowing"), ("barley", "sowing")])
+def test_every_dose_of_every_crop_has_a_best_before_date(engine, crop, stage):
+    response = plan(engine, crop, stage, "2026-11-05", date(2026, 11, 1))
+    assert response.recommendation.schedule
+    for item in response.recommendation.schedule:
+        assert item.apply_by is not None, (crop, item.stage, item.fertilizer_type)
+        assert item.apply_by >= date(2026, 11, 5), (crop, item.stage)
 
 
 @pytest.mark.parametrize("crop,stage", [("wheat", "sowing"), ("rice", "nursery_sowing"), ("maize", "sowing"), ("cotton", "sowing"), ("sugarcane", "planting"), ("chickpea", "sowing"), ("barley", "sowing")])
@@ -117,3 +135,30 @@ def test_wheat_note_says_to_drill_urea_at_sowing_when_superphosphate_is_used(eng
     response = plan(engine, "wheat", "sowing", "2026-11-05", date(2026, 11, 1))
     note = next(n for n in response.explanation.data_notes if "phosphorus fertilizer in PAU's table" in n)
     assert "SSP (Single Superphosphate)" in note and "drill 20 kg/acre of the urea at sowing" in note
+
+
+# ---- timing data must never invalidate the product classifier ------------------------------------
+
+def test_changing_the_timing_estimates_does_not_make_the_classifier_out_of_date(tmp_path, monkeypatch):
+    """The classifier learns which products a plan has. The estimated dates say when, so editing them must
+    leave the rules hash alone (or the model would be left out and need retraining for no reason), while a
+    change to anything that decides a product or a dose must still change it."""
+    import shutil
+
+    from src.engine import recommendation_engine as module
+
+    shutil.copytree(module.EXTERNAL_DIR, tmp_path / "external")
+    monkeypatch.setattr(module, "EXTERNAL_DIR", tmp_path / "external")
+    before = module._rules_hash8()
+
+    estimates = tmp_path / "external" / "stage_timing_estimates.csv"
+    estimates.write_text(estimates.read_text().replace(",21,28,", ",30,40,"), encoding="utf-8")
+    assert module._rules_hash8() == before
+
+    doses = tmp_path / "external" / "reference_doses.csv"
+    doses.write_text(doses.read_text() + "\n", encoding="utf-8")
+    assert module._rules_hash8() != before
+
+
+def test_the_registered_classifier_still_matches_the_rules_after_the_timing_estimates(engine):
+    assert not engine.model_stale

@@ -33,6 +33,7 @@ class ReferenceTables:
     split_schedule: list[dict] = field(default_factory=list)
     nutrient_efficiency: list[dict] = field(default_factory=list)
     phosphorus_sources: list[dict] = field(default_factory=list)
+    stage_timing_estimates: list[dict] = field(default_factory=list)
     fertilizer_products: list[dict] = field(default_factory=list)
     soil_test_ratings: list[dict] = field(default_factory=list)
     seasonal_weather: list[dict] = field(default_factory=list)
@@ -54,6 +55,8 @@ _TABLE_SPECS: list[tuple[str, str, tuple[str, ...]]] = [
     ("split_schedule", "split_schedule.csv", ("crop_id", "stage_id", "n_fraction", "p_fraction", "k_fraction")),
     ("nutrient_efficiency", "nutrient_efficiency.csv",
      ("crop_id", "nutrient", "fertilizer_use_efficiency", "source", "notes")),
+    ("stage_timing_estimates", "stage_timing_estimates.csv",
+     ("crop_id", "stage_id", "est_start", "est_end", "est_basis")),
     ("phosphorus_sources", "phosphorus_sources.csv",
      ("crop_id", "primary_product", "alternative_products", "source", "notes")),
     ("fertilizer_products", "fertilizer_products.csv",

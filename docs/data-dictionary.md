@@ -171,9 +171,27 @@ crop has surely reached uses the late end, so it is never advanced early. `first
 **What the schedule's date means.** `apply_by` is the best-before day: the last day of the stage's window for
 a nitrogen top-dressing, the first day for phosphorus and potash (which go on before or at the stage). The
 line's `timing_note` is the stage's `timing_hint` plus "Best between X and Y" when the stage has a window,
-and a rain delay when one applies. A stage with no sourced days (wheat's first irrigation, maize's
-knee-high stage, the cotton and sugarcane top-dressings) has the instruction but no date: PAU gives no day
-count, and none is invented.
+and a rain delay when one applies. Where PAU gives no day count (wheat's first irrigation, maize's knee-high
+and pre-tasseling stages, cotton's thinning and flowering, sugarcane's two top-dressings) the window comes
+from `stage_timing_estimates.csv`, and the note says "The dates are an estimate: PAU gives no day count for
+this stage." Only the stage's real days (`das_start`/`das_end`) decide which stage a crop is in; an estimate
+only dates a dose.
+
+### stage_timing_estimates.csv
+
+Approximate day windows for the stages in growth_stages.csv whose days PAU does not give, so every dose in a
+schedule has a best-before date.
+
+| Column | Meaning | Unit |
+|---|---|---|
+| `crop_id`, `stage_id` | The stage, as in growth_stages.csv | ids |
+| `est_start`, `est_end` | First and last day after sowing | integer days |
+| `est_basis` | Why these days, and what PAU does say | free text |
+
+These are a team assumption pending an agronomist's sign-off. The file only says *when* to apply, never which
+product or how much, so the engine leaves it out of the rules hash (`TIMING_ONLY_FILES` in
+`recommendation_engine.py`): editing it does not make the product classifier out of date or force it to be
+retrained.
 
 ### reference_doses.csv
 
@@ -391,4 +409,4 @@ wheat-K-low rule, to prove the shape out.
 
 ## Reference tables (`ml/data/external/`, schemas in the prompt packs, contract C5)
 
-`crops.csv`, `crop_varieties.csv`, `growth_stages.csv`, `reference_doses.csv`, `soil_adjustments.csv`, `stcr_equations.csv` (optional), `split_schedule.csv`, `nutrient_efficiency.csv` (per crop, used for credit only), `phosphorus_sources.csv`, `fertilizer_products.csv`, `soil_test_ratings.csv`, `agronomy_rules.yaml`, `explanation_templates.yaml`, `seasonal_weather.csv`. Every value has a `source`.
+`crops.csv`, `crop_varieties.csv`, `growth_stages.csv`, `reference_doses.csv`, `soil_adjustments.csv`, `stcr_equations.csv` (optional), `split_schedule.csv`, `nutrient_efficiency.csv` (per crop, used for credit only), `phosphorus_sources.csv`, `stage_timing_estimates.csv`, `fertilizer_products.csv`, `soil_test_ratings.csv`, `agronomy_rules.yaml`, `explanation_templates.yaml`, `seasonal_weather.csv`. Every value has a `source`.

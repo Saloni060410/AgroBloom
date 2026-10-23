@@ -99,13 +99,19 @@ class LoadedModel:
 _MODEL_CACHE: dict[tuple[str, int], object] = {}
 
 
+# Files that only say WHEN to apply a dose, never which products or how much. The classifier learns the products
+# in a plan, so a change to these does not make it out of date and must not force it to be retrained.
+TIMING_ONLY_FILES = frozenset({"stage_timing_estimates.csv"})
+
+
 def _rules_hash8() -> str:
     """Hash of every file in data/external/ together, so any change to any reference table
     or rule changes model_version -- a bad recommendation traces back to the exact tables
-    that produced it (contract C1)."""
+    that produced it (contract C1). Timing-only files (TIMING_ONLY_FILES) are left out: they cannot
+    change a product or a quantity."""
     digest = hashlib.sha256()
     for path in sorted(EXTERNAL_DIR.iterdir()):
-        if path.is_file():
+        if path.is_file() and path.name not in TIMING_ONLY_FILES:
             digest.update(path.read_bytes())
     return digest.hexdigest()[:8]
 

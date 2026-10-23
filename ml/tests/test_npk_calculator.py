@@ -275,14 +275,17 @@ def test_a_later_growth_stage_drops_the_basal_stage():
     assert "dap" not in {item["fertilizer_type"] for item in schedule}
 
 
-def test_an_unsourced_stage_date_gives_a_null_apply_by_with_a_timing_note():
+def test_a_stage_with_no_pau_day_count_gets_an_estimated_apply_by_and_says_so():
+    """PAU gives no day count for wheat's first irrigation. The dose still gets an approximate best-before date
+    (stage_timing_estimates.csv: 21 to 28 days after sowing), and the note says it is an estimate."""
     result, _ = balance("wheat", growth_stage="crown_root_initiation", soil={**FIXTURE_SOIL, "k": 300.0})
     schedule = to_products(
         result, "wheat", "crown_root_initiation", date(2026, 11, 5), {"rainfall_mm_forecast": 0}, TABLES, TODAY
     )
     first_split = next(i for i in schedule if i["stage"] == "crown_root_initiation")
-    assert first_split["apply_by"] is None
+    assert first_split["apply_by"] == "2026-12-03"  # 28 days after the 5 November sowing
     assert "first irrigation" in first_split["timing_note"].lower()
+    assert "an estimate" in first_split["timing_note"]
 
 
 def test_dap_nitrogen_is_credited_against_the_first_nitrogen_stage():

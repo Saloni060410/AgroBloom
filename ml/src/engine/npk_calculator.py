@@ -25,7 +25,7 @@ from datetime import date, timedelta
 
 from src.data_pipeline.feature_engineering import soil_rating
 from src.data_pipeline.soil_data_loader import ReferenceTables
-from src.engine.stage_timing import window_das
+from src.engine.stage_timing import window_or_estimate
 
 ACRES_PER_HECTARE = 2.4711  # 1 ha = 2.4711 acre (contract C1)
 
@@ -443,9 +443,10 @@ def _stage_apply_by(
     row = _stage_row(tables, crop_id, stage_id)
     label = row["name_en"]
     hint = (row.get("timing_hint") or "").strip()
-    window = window_das(tables, row)
-    if window is None:
+    found = window_or_estimate(tables, row)
+    if found is None:
         return None, hint or f"At {label}"
+    window, estimated = found
     first, last = (sowing_date + timedelta(days=round(day)) for day in window)
     apply_by = first if basal else last
     note = hint
@@ -453,6 +454,8 @@ def _stage_apply_by(
         note = f"{hint} Best between {_day_label(first)} and {_day_label(last)}.".strip()
     elif hint and (row.get("counted_from") or "sowing").strip() == "transplanting":
         note = f"{hint} About {_day_label(first)}."
+    if estimated:
+        note = f"{note} The dates are an estimate: PAU gives no day count for this stage.".strip()
     return apply_by, note or f"At {label}"
 
 
@@ -461,10 +464,10 @@ def _effective_sowing_date(tables: ReferenceTables, crop_id: str, growth_stage: 
     and back-derive the sowing date that implies -- contract C1. None if the current stage's
     own timing isn't sourced either, in which case nothing downstream can be dated."""
     row = _stage_row(tables, crop_id, growth_stage)
-    window = window_das(tables, row)
-    if window is None:
+    found = window_or_estimate(tables, row)
+    if found is None:
         return None
-    midpoint = sum(window) / 2
+    midpoint = sum(found[0]) / 2
     return today - timedelta(days=round(midpoint))
 
 
