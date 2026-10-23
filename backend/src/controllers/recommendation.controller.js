@@ -20,7 +20,7 @@ export const createRecommendationSchema = z
   .optional()
   .transform((v) => v ?? {})
 
-function toApiRecommendation(row, { areaAcres } = {}) {
+export function toApiRecommendation(row, { areaAcres } = {}) {
   const weatherStale = row.weatherSource != null && row.weatherSource !== 'live'
   const savingTotal =
     row.estimatedSaving != null && areaAcres != null ? row.estimatedSaving * areaAcres : null

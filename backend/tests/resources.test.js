@@ -178,3 +178,32 @@ test('another user cannot delete someone else\'s field', async () => {
   assert.equal(res.status, 404)
   assert.equal(await prisma.field.count({ where: { id: field.id } }), 1)
 })
+
+
+test('GET /overview returns every farm with its fields, newest soil test, newest plan and logs', async () => {
+  const user = await registerUser('overview@test.dev')
+  const other = await registerUser('overviewOther@test.dev')
+  const farm = await prisma.farm.create({ data: { name: 'Overview Farm', ownerId: user.user.id } })
+  const field = await prisma.field.create({ data: { name: 'F1', farmId: farm.id, cropType: 'wheat', growthStage: 'sowing', areaAcres: 2 } })
+  await prisma.soilTest.create({ data: { fieldId: field.id, n: 100, p: 5, k: 50, ph: 7, organicCarbon: 0.4, moisture: 20, testedOn: new Date('2026-01-01') } })
+  const newest = await prisma.soilTest.create({ data: { fieldId: field.id, n: 200, p: 9, k: 90, ph: 7.4, organicCarbon: 0.42, moisture: 18, testedOn: new Date('2026-02-01') } })
+  await prisma.fertilizerLog.create({ data: { fieldId: field.id, type: 'urea', quantityKgPerAcre: 50, appliedOn: new Date('2026-02-10') } })
+  const emptyFarm = await prisma.farm.create({ data: { name: 'Empty Farm', ownerId: user.user.id } })
+  const foreign = await prisma.farm.create({ data: { name: 'Not Yours', ownerId: other.user.id } })
+  await prisma.field.create({ data: { name: 'Foreign', farmId: foreign.id } })
+
+  const res = await fetch(`${baseUrl}/overview`, { headers: authed(user.accessToken) })
+  assert.equal(res.status, 200)
+  const { farms } = await res.json()
+  assert.deepEqual(farms.map((f) => f.name), ['Overview Farm', 'Empty Farm'])
+  assert.equal(farms[1].id, emptyFarm.id)
+  assert.deepEqual(farms[1].fields, [])
+  const [f] = farms[0].fields
+  assert.equal(f.id, field.id)
+  assert.equal(f.soilTest.id, newest.id) // only the newest test
+  assert.equal(f.recommendation, null)
+  assert.equal(f.fertilizerLogs.length, 1)
+  assert.equal('soilTests' in f, false)
+
+  assert.equal((await fetch(`${baseUrl}/overview`)).status, 401)
+})
