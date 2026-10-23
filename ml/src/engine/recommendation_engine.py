@@ -59,9 +59,14 @@ from src.data_pipeline.soil_data_loader import (
 from src.degradation.risk_analyzer import assess_recommendation, score_planned
 from src.engine.cost import compare_to_history, cost_breakdown, estimate_cost, prices_as_of
 from src.engine.history import recent_rain, soil_history_insights, stage_from_sowing
-from src.engine.npk_calculator import _stage_row, compute_balance, to_products
+from src.engine.npk_calculator import (
+    _stage_row,
+    compute_balance,
+    phosphorus_alternatives,
+    to_products,
+)
 from src.models.imitation_features import FEATURE_SET as IMITATION_FEATURE_SET
-from src.models.imitation_features import build_imitation_features
+from src.models.imitation_features import build_imitation_features, prior_supply
 
 try:  # R10 (explain, ranking rule_trace items with XGBoost pred_contribs) isn't built yet.
     from src.evaluation.explainability import explain as _richa_explain
@@ -86,6 +91,7 @@ class LoadedModel:
     labels: list[str]
     dataset_source: str  # "real" | "fallback" -- carried through so a caller can tell
     feature_set: str | None = None  # None: the original inputs (build_features); else see models/imitation_features
+    rules_hash: str | None = None  # the rules the model was trained on; None for models that did not record it
 
 
 # A loaded model per artifact file. The service builds its engine twice at start-up (once when the module
@@ -131,6 +137,7 @@ def _load_active_model() -> LoadedModel | None:
             labels=json.loads(labels_path.read_text()),
             dataset_source=entry.get("dataset_source", "unknown"),
             feature_set=entry.get("feature_set"),
+            rules_hash=entry.get("rules_hash"),
         )
     except (OSError, json.JSONDecodeError, KeyError, IndexError):
         return None
@@ -156,24 +163,33 @@ class Engine:
         # plans carry no classifier note and /health says so. Off by default, so tests and local runs are unchanged.
         self.model: LoadedModel | None = None
         self.model_loading = False
+        self.model_stale = False
         if self._startup_error is None:
             if os.environ.get("ML_LOAD_MODEL_IN_BACKGROUND", "").lower() == "true":
                 self.model_loading = True
                 threading.Thread(target=self._load_model_in_background, name="load-classifier", daemon=True).start()
             else:
-                self.model = _load_active_model()
+                self.model = self._load_current_model()
         self._rules_hash = _rules_hash8() if self._startup_error is None else None
+
+    def _load_current_model(self) -> LoadedModel | None:
+        """The active classifier, unless it was trained on other rules than the ones loaded now. It learns the
+        rules, so after a change to data/external/ it would give an opinion about a plan the engine no longer
+        makes; it is left out (and /health says why) until it is retrained. The plan never depends on it."""
+        model = _load_active_model()
+        self.model_stale = model is not None and model.rules_hash is not None and model.rules_hash != _rules_hash8()
+        return None if self.model_stale else model
 
     def _load_model_in_background(self) -> None:
         try:
-            self.model = _load_active_model()
+            self.model = self._load_current_model()
         finally:
             self.model_loading = False
 
     def refresh_model(self) -> None:
         """Re-checks the registry for a newer model without restarting the service. Not
         wired to an endpoint yet -- useful for tests and for a future admin/reload hook."""
-        self.model = _load_active_model()
+        self.model = self._load_current_model()
 
     @property
     def status(self) -> Literal["ok", "degraded"]:
@@ -185,6 +201,11 @@ class Engine:
             return f"reference data unavailable: {self._startup_error}"
         if self.model is None and self.model_loading:
             return "the classifier model is still loading; plans are unaffected"
+        if self.model_stale:
+            return (
+                "the classifier was trained on older rules than the ones loaded, so it is not used; "
+                "retrain it with `python -m src.models.train_imitation --config configs/imitation.yaml`. Plans are unaffected"
+            )
         if self.model is None:
             return "no classifier model is registered yet in model_registry/registry.json"
         return None
@@ -214,7 +235,18 @@ def _primary_product(schedule: list[dict]) -> tuple[str, float]:
     return product, round(totals[product], 3)
 
 
-def _classifier_opinion(engine: Engine, features, request: RecommendRequest, stage_id: str) -> list[dict] | None:
+def plan_label(schedule: list[dict]) -> str:
+    """Every product in the plan, as one label ("dap+urea"), or "none" for an empty plan. This is what the
+    rule-imitation classifier predicts: not just the largest product, so a plan that adds potash or uses
+    superphosphate for phosphorus is told apart from one that does not."""
+    return "+".join(sorted({item["fertilizer_type"] for item in schedule})) or "none"
+
+
+def _readable_label(label: str) -> str:
+    return "no fertilizer" if label == "none" else " + ".join(label.split("+"))
+
+
+def _classifier_opinion(engine: Engine, features, request: RecommendRequest, stage_id: str, today: date) -> list[dict] | None:
     """Top-3 classifier probabilities for explain(), and for the disagreement check in step
     (c). None if no classifier is registered -- the calculator's choice stands either way.
     Each model is fed the inputs it was trained on: the original classifier gets `features`; the
@@ -226,8 +258,12 @@ def _classifier_opinion(engine: Engine, features, request: RecommendRequest, sta
         inputs = features
     elif engine.model.feature_set == IMITATION_FEATURE_SET:
         soil = request.soil
+        supplied = prior_supply(
+            [usage.model_dump(mode="json") for usage in request.previous_fertilizer_usage], engine.tables, today,
+            engine.rules["credit_window_days"], _pk_window_days(engine, request.crop_type) or engine.rules["credit_window_days"],
+        )
         inputs = build_imitation_features(
-            [{"crop_id": request.crop_type, "irrigation": request.irrigation, "stage_id": stage_id, "n": soil.n, "p": soil.p, "k": soil.k}],
+            [{"crop_id": request.crop_type, "irrigation": request.irrigation, "stage_id": stage_id, "n": soil.n, "p": soil.p, "k": soil.k, **supplied}],
             engine.tables,
         )
     else:
@@ -248,15 +284,17 @@ def _fallback_top_factors(rule_trace: list[dict]) -> list[str]:
     return factors
 
 
-def _unpriced_product_notes(schedule: list[dict], cost_breakdown_lines: list[dict]) -> list[str]:
+def _unpriced_product_notes(schedule: list[dict], cost_breakdown_lines: list[dict], products_table: list[dict]) -> list[str]:
     """A product cost.py excluded from cost.breakdown because it has no verified price yet
     (npk_calculator.to_products()'s docstring, cost.py's module docstring) is still in the
     schedule with a real quantity -- this is the one place that gap surfaces to the caller,
     since cost.breakdown's own omission is silent by itself."""
     priced_ids = {line["fertilizer_type"] for line in cost_breakdown_lines}
     scheduled_ids = {line["fertilizer_type"] for line in schedule}
+    names = {row["product_id"]: row["name"] for row in products_table}
     return [
-        f"{product_id}'s cost is unavailable (no verified price yet); it is not included in the cost breakdown."
+        f"There is no verified price for {names.get(product_id, product_id)} yet, so the cost shown leaves "
+        f"it out and the real cost is higher."
         for product_id in sorted(scheduled_ids - priced_ids)
     ]
 
@@ -295,8 +333,38 @@ def _effective_stage(engine: Engine, request: RecommendRequest, today: date) -> 
     }
 
 
+_NUTRIENT_NAMES = {"n": "nitrogen", "p": "phosphorus", "k": "potassium"}
+
+
 def _data_notes(rule_trace: list[dict], weather_source: str) -> list[str]:
     notes = []
+    unadjusted = [e for e in rule_trace if e["rule_id"] == "no_soil_adjustment_published"]
+    if unadjusted:
+        names = [_NUTRIENT_NAMES[e["nutrient"]] for e in unadjusted]
+        names = names[0] if len(names) == 1 else ", ".join(names[:-1]) + " and " + names[-1]
+        crop = unadjusted[0]["params"]["crop_id"]
+        if all(e["params"]["band_factor"] is not None for e in unadjusted):
+            bands = "; ".join(
+                f"{_NUTRIENT_NAMES[e['nutrient']]} {e['value']:g} kg/ha is in the {e['params']['soil_rating'].replace('_', ' ')} band"
+                + (
+                    f", {e['params']['band_factor'] - 1:+.0%} ({e['params']['adjustment_kg_ha']:+.1f} kg/ha)"
+                    if e["params"]["band_factor"] != 1.0
+                    else ", so the standard dose"
+                )
+                for e in unadjusted
+            )
+            notes.append(
+                f"For {crop}, the Punjab Agricultural University publishes no soil-test adjustment for {names}, so the "
+                f"general ICAR rule for soil-test bands was used: a low band adds 25%, a high band takes off 25%, and "
+                f"a medium band keeps the standard dose, the same inside a whole band. This is a general rule, not a PAU "
+                f"figure, so check a dose that was cut with your local agriculture officer. Here: {bands}."
+            )
+        else:
+            notes.append(
+                f"For {crop}, the Punjab Agricultural University publishes no soil-test adjustment for {names}. "
+                f"Those doses stay at the standard published dose whatever the soil test reads; "
+                f"your soil values still set the soil ratings shown."
+            )
     for entry in rule_trace:
         if entry["rule_id"] == "stage_advanced_from_sowing_date":
             p = entry["params"]
@@ -320,11 +388,40 @@ def _data_notes(rule_trace: list[dict], weather_source: str) -> list[str]:
             notes.append(f"Previous fertilizer use listed an unrecognised product ({products}), ignored.")
         elif entry["rule_id"] == "classifier_disagreement":
             notes.append(
-                f"The product classifier's top guess ({entry['value']}) differed from the "
-                f"rule-based plan; the rule-based plan was kept."
+                f"The product classifier's top guess ({_readable_label(entry['value'])}) differed from the "
+                f"rule-based plan ({_readable_label(entry['params']['balance_choice'])}); the rule-based plan was kept."
             )
     if weather_source != "live":
         notes.append(f"Weather is a {weather_source.replace('_', ' ')} value, not a live forecast.")
+    return notes
+
+
+def _product_notes(schedule: list[dict], request: RecommendRequest, tables) -> list[str]:
+    """What the plan leaves the farmer to decide: the same phosphorus from another product (PAU lists
+    DAP, single superphosphate and, for wheat and maize, nitrophosphate), and a variety with its own dose."""
+    notes = []
+    crop = request.crop_type.replace("_", " ")
+    alternatives = phosphorus_alternatives(schedule, request.crop_type, tables)
+    if alternatives:
+        parts = []
+        for option in alternatives["options"]:
+            urea = option["urea_change_kg_per_acre"]
+            urea_text = (
+                f", with about {abs(urea):g} kg/acre {'more' if urea > 0 else 'less'} urea" if urea is not None and abs(urea) >= 1 else ""
+            )
+            parts.append(f"{option['name']}: {option['quantity_kg_per_acre']:g} kg/acre{urea_text}")
+        sulphur = " Single superphosphate also supplies sulphur." if "ssp" in {o["product_id"] for o in alternatives["options"]} | {alternatives["primary_id"]} else ""
+        notes.append(
+            f"{alternatives['primary_name']} is the phosphorus fertilizer in PAU's table for {crop}. The same "
+            f"{alternatives['p2o5_kg_per_acre']:g} kg/acre of phosphorus (P2O5) can come from: " + "; ".join(parts) + f".{sulphur}"
+        )
+    if not request.variety:
+        varieties = [row["name_en"] for row in tables.crop_varieties if row["crop_id"] == request.crop_type]
+        if varieties:
+            notes.append(
+                f"PAU gives a different {crop} dose for {' and '.join(varieties)}. This plan uses the general "
+                f"{crop} dose; choose the variety on the field to get the dose that matches it."
+            )
     return notes
 
 
@@ -353,6 +450,7 @@ def recommend(request: RecommendRequest, engine: Engine, today: date | None = No
         pk_window_days=_pk_window_days(engine, request.crop_type),
         rainfall_history=rainfall,
         rain_rules=engine.rules,
+        rules=engine.rules,
     )  # raises ReferenceDataIncomplete -> 503, UnknownStageError -> 422
     if stage_trace:
         rule_trace.append(stage_trace)
@@ -372,8 +470,10 @@ def recommend(request: RecommendRequest, engine: Engine, today: date | None = No
     # an unpriced-but-known product (e.g. MOP, see cost.py) is still scheduled here.
 
     primary_product, primary_quantity = _primary_product(schedule)
-    classifier_opinion = _classifier_opinion(engine, features, request, stage_used)
-    if classifier_opinion and classifier_opinion[0]["product"] != primary_product:
+    classifier_opinion = _classifier_opinion(engine, features, request, stage_used, today)
+    # The original classifier names one product; the rule-imitation one names the whole set in the plan.
+    plan_choice = plan_label(schedule) if engine.model is not None and engine.model.feature_set == IMITATION_FEATURE_SET else primary_product
+    if classifier_opinion and classifier_opinion[0]["product"] != plan_choice:
         rule_trace.append(
             {
                 "rule_id": "classifier_disagreement",
@@ -381,7 +481,7 @@ def recommend(request: RecommendRequest, engine: Engine, today: date | None = No
                 "value": classifier_opinion[0]["product"],
                 "threshold": None,
                 "effect": "balance kept, classifier opinion recorded",
-                "params": {"classifier_top3": classifier_opinion, "balance_choice": primary_product},
+                "params": {"classifier_top3": classifier_opinion, "balance_choice": plan_choice},
             }
         )
 
@@ -432,7 +532,8 @@ def recommend(request: RecommendRequest, engine: Engine, today: date | None = No
             # there as well as in history_insights (no client change needed to see them).
             data_notes=_data_notes(rule_trace, payload["weather"]["source"])
             + [item["text"] for item in insights]
-            + _unpriced_product_notes(schedule, breakdown_lines),
+            + _product_notes(schedule, request, engine.tables)
+            + _unpriced_product_notes(schedule, breakdown_lines, products_table),
             history_insights=insights,
             stage_used=stage_used,
         ),
@@ -459,6 +560,7 @@ def score_planned_risk(request: RiskScoreRequest, engine: Engine, today: date | 
         today,
         credit_window_days=engine.rules["credit_window_days"],
         pk_window_days=_pk_window_days(engine, request.crop_type),
+        rules=engine.rules,
     )
     result = score_planned(
         payload["planned_application"],

@@ -1,3 +1,5 @@
 crop_id,variety_id,name_en,name_hi,source
 rice,pr_132,PR 132,पीआर 132,"PAU Package of Practices for Crops of Punjab, Kharif 2026, Vol. 43, p.10 (variety-specific fertilizer dose, lower N than other varieties)"
 chickpea,kabuli,Kabuli gram,काबुली चना,"PAU Package of Practices for Crops of Punjab, Rabi 2025-26, Vol. 42, p.36 (variety-specific fertilizer dose, higher P2O5 than desi gram)"
+cotton,non_bt,Non-Bt cotton,गैर-बीटी कपास,"PAU Package of Practices for Crops of Punjab, Kharif 2026, Vol. 43, p.49 (variety-specific fertilizer dose: lower N than Bt hybrids)"
+cotton,bt,Bt cotton (not a hybrid),बीटी कपास (गैर-संकर),"PAU Package of Practices for Crops of Punjab, Kharif 2026, Vol. 43, p.49 (variety-specific fertilizer dose: lower N than Bt hybrids)"

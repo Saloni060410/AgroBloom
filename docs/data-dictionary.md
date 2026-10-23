@@ -141,8 +141,10 @@ named variety.
 | `name_en` / `name_hi` | Display names | string |
 | `source` | Citation | free text |
 
-One row as of this pass (`rice`/`pr_132`) — the only case in hand where PAU publishes a real,
-different fertilizer dose by variety.
+Rows: `rice`/`pr_132`, `chickpea`/`kabuli`, and `cotton`/`non_bt` and `cotton`/`bt` (Bt varieties
+that are not hybrids). The general cotton dose in `reference_doses.csv` is PAU's Bt hybrids row. These
+are the cases where PAU publishes a different fertilizer dose by variety. When a request names no
+variety for such a crop, the plan carries a note listing the varieties that have their own dose.
 
 ### growth_stages.csv
 
@@ -206,7 +208,18 @@ standard dose, skipping it).
 
 **Known gap:** wheat and rice N (and wheat P2O5) have no published PAU soil-test adjustment
 table — only `TODO(data)` rows, with the STCR equation noted as a full alternative computation
-path (see `stcr_equations.csv`).
+path (see `stcr_equations.csv`). The same is true of any other crop and nutrient without a row
+(maize N, P and K, for example).
+
+**How the engine covers the gap.** For a crop and nutrient with no PAU adjustment, the engine
+applies the general ICAR soil-test band rule from `agronomy_rules.yaml` (`soil_rating_fallback`):
+a low or very low rating adds 25% of the standard dose, a medium rating keeps it, a high rating
+takes off 25%, the same dose anywhere inside a band. Where PAU publishes an adjustment (wheat K,
+rice P and K, cotton K, sugarcane P and K, barley K) that table decides and the band rule never
+touches it. The 25% factors are a team assumption pending an agronomist's sign-off, nitrogen
+above all. Switching `soil_rating_fallback.enabled` to `false` restores the flat standard dose.
+pH, organic carbon and moisture never change a dose. The farmer sees which band applied and
+what it did to the dose in the plan's data notes.
 
 ### stcr_equations.csv
 
@@ -289,8 +302,30 @@ citation was found for those specific products. SSP and the remaining NPK grades
 `npk_17_17_17`, `np_20_20_0`) are still `price_inr_per_kg: TODO(data)` — they're under a
 **decontrolled MRP regime** (confirmed via PIB Backgrounder, Release ID 2211384, 5 Jan 2026), so
 only their government *subsidy* rate is publicly fixed, not the consumer price; subsidy figures
-are noted in each row for context but never substituted for a retail price. **The engine must
-only select priced products** — a missing price is never treated as 0.
+are noted in each row for context but never substituted for a retail price. **A missing price is
+never treated as 0 in a comparison.** The engine does recommend a product that has no price (single
+superphosphate for sugarcane, for example), because the right product matters more than being able to
+cost it. The cost shown then leaves that product out and says so in the plan's data notes, and the
+saving against earlier applications is left unknown rather than computed from a partial cost.
+
+### phosphorus_sources.csv
+
+Which product supplies the phosphorus in a plan. PAU's fertilizer table for each crop lists the
+phosphorus source (DAP or single superphosphate; nitrophosphate for wheat and maize; sugarcane lists
+only single superphosphate), and the engine uses the first one listed.
+
+| Column | Meaning | Unit |
+|---|---|---|
+| `crop_id` | Foreign key into crops.csv; one row per crop | snake_case id |
+| `primary_product` | The product the plan uses for phosphorus | `product_id` in fertilizer_products.csv |
+| `alternative_products` | Other products that can supply the same phosphorus, shown in a note with their quantities | `product_id`s joined with `\|` |
+| `source` | The PAU table the choice comes from | free text |
+| `notes` | Matching assumptions, for example nitrophosphate taken as `np_20_20_0` | free text |
+
+Nitrogen carried by the phosphorus product is credited against urea, so a product without nitrogen
+(single superphosphate) means more urea. The soil schema has no sulphur reading, so the engine cannot
+tell whether sulphur is short; the plan only mentions that single superphosphate supplies it. The
+chickpea row is confirmed only by secondary sources (`TODO(data)`: check PAU's gram table).
 
 ### soil_test_ratings.csv
 
@@ -343,4 +378,4 @@ wheat-K-low rule, to prove the shape out.
 
 ## Reference tables (`ml/data/external/`, schemas in the prompt packs, contract C5)
 
-`crops.csv`, `crop_varieties.csv`, `growth_stages.csv`, `reference_doses.csv`, `soil_adjustments.csv`, `stcr_equations.csv` (optional), `split_schedule.csv`, `nutrient_efficiency.csv` (per crop, used for credit only), `fertilizer_products.csv`, `soil_test_ratings.csv`, `agronomy_rules.yaml`, `explanation_templates.yaml`, `seasonal_weather.csv`. Every value has a `source`.
+`crops.csv`, `crop_varieties.csv`, `growth_stages.csv`, `reference_doses.csv`, `soil_adjustments.csv`, `stcr_equations.csv` (optional), `split_schedule.csv`, `nutrient_efficiency.csv` (per crop, used for credit only), `phosphorus_sources.csv`, `fertilizer_products.csv`, `soil_test_ratings.csv`, `agronomy_rules.yaml`, `explanation_templates.yaml`, `seasonal_weather.csv`. Every value has a `source`.

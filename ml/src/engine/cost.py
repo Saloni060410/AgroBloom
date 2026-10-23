@@ -11,7 +11,9 @@ recommendation either (that was the pre-2026-09-27 behavior, before the unpriced
 policy below existed at all). It is simply excluded from cost.breakdown/
 estimated_cost_inr_per_acre -- its quantity and schedule still come back from
 npk_calculator.to_products() as normal, and recommendation_engine.py's data_notes says its
-cost is unavailable, once, per response.
+cost is unavailable, once, per response. The same goes for a comparison with earlier applications: if
+either side uses an unpriced product, compare_to_history gives no previous cost and no saving rather than
+a saving that only exists because a product was counted as free.
 A product with no ROW AT ALL in fertilizer_products.csv is a different, still-fatal problem
 (estimate_cost still raises for that) -- an unknown product, not merely an unpriced one.
 """
@@ -183,11 +185,16 @@ def compare_to_history(
     if not usable:
         return {"previous_cost_inr_per_acre": None, "saving_inr_per_acre": None, "over_application_reduction_pct": None}
 
-    # Same treatment as estimate_cost: a usable prior-usage entry for an unpriced product
-    # (module docstring) contributes 0 to previous_cost rather than crashing the comparison --
-    # its nutrients are still counted below via _nutrient_total_kg_per_acre, which needs no
-    # price at all.
+    # A product with no price contributes 0 to a cost, which is fine for the breakdown but would turn
+    # a cost COMPARISON into a false saving (a plan with an unpriced product looks cheaper than it is).
+    # So when either side uses one, the costs and the saving are unknown (None); the nutrient reduction
+    # below needs no price and is still given.
     products = _products_by_id(products_table)
+    unpriced_involved = any(
+        _price_or_none(products[item[key]]) is None
+        for items, key in ((usable, "type"), (schedule, "fertilizer_type"))
+        for item in items
+    )
     previous_cost = round(
         sum(
             usage["quantity_kg_per_acre"] * price
@@ -208,7 +215,7 @@ def compare_to_history(
     )
 
     return {
-        "previous_cost_inr_per_acre": previous_cost,
-        "saving_inr_per_acre": saving,
+        "previous_cost_inr_per_acre": None if unpriced_involved else previous_cost,
+        "saving_inr_per_acre": None if unpriced_involved else saving,
         "over_application_reduction_pct": reduction_pct,
     }

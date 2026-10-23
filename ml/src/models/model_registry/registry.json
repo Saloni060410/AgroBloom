@@ -676,6 +676,324 @@
       "git_sha": "99c8e94",
       "date": "2026-10-23T07:04:02.105741+00:00",
       "run_id": "20261023T070402Z"
+    },
+    {
+      "model_name": "rule-imitation-classifier",
+      "version": "0.1.1",
+      "kind": "rule_imitation",
+      "feature_set": "rule_imitation_v1",
+      "artifact": "models_artifacts/rule-imitation-classifier-0.1.1.joblib",
+      "labels": "models_artifacts/rule-imitation-classifier-0.1.1.labels.json",
+      "labels_note": "predict_proba columns follow this list; decode with labels[index]",
+      "teacher": "rule engine: compute_balance + to_products, main product = largest total across the schedule",
+      "samples": {
+        "drawn": 12000,
+        "skipped": 0,
+        "unique_used": 12000,
+        "train": 9600,
+        "held_out": 2400,
+        "class_counts": {
+          "urea": 8850,
+          "none": 2186,
+          "dap": 964
+        }
+      },
+      "cv_metrics": {
+        "accuracy": {
+          "mean": 0.985,
+          "std": 0.0017,
+          "folds": 5
+        }
+      },
+      "test_metrics": {
+        "agreement_with_rule_engine": 0.9842,
+        "agreement_ci95": [
+          0.9792,
+          0.9888
+        ],
+        "macro_f1": 0.9621,
+        "baseline_always_urea": 0.7375,
+        "per_class": {
+          "dap": {
+            "precision": 0.9101,
+            "recall": 0.8912,
+            "support": 193
+          },
+          "none": {
+            "precision": 1.0,
+            "recall": 0.9908,
+            "support": 437
+          },
+          "urea": {
+            "precision": 0.9882,
+            "recall": 0.9927,
+            "support": 1770
+          }
+        },
+        "per_crop_agreement": {
+          "barley": 0.9608,
+          "chickpea": 0.955,
+          "cotton": 1.0,
+          "maize": 0.9852,
+          "rice": 1.0,
+          "sugarcane": 1.0,
+          "wheat": 0.9886
+        },
+        "confusion_matrix": {
+          "labels": [
+            "dap",
+            "none",
+            "urea"
+          ],
+          "rows_are_rule_engine": [
+            [
+              172,
+              0,
+              21
+            ],
+            [
+              4,
+              433,
+              0
+            ],
+            [
+              13,
+              0,
+              1757
+            ]
+          ]
+        }
+      },
+      "dataset_source": "rule_engine_generated",
+      "dataset_hash": "fee3ae306860",
+      "config_hash": "bb8cd4210635",
+      "rules_hash": "5c4d4480",
+      "seed": 42,
+      "git_sha": "c665415",
+      "date": "2026-10-23T09:13:01.843785+00:00",
+      "run_id": "20261023T091301Z"
+    },
+    {
+      "model_name": "rule-imitation-classifier",
+      "version": "0.1.2",
+      "kind": "rule_imitation",
+      "feature_set": "rule_imitation_v2",
+      "artifact": "models_artifacts/rule-imitation-classifier-0.1.2.joblib",
+      "labels": "models_artifacts/rule-imitation-classifier-0.1.2.labels.json",
+      "labels_note": "predict_proba columns follow this list; decode with labels[index]",
+      "teacher": "rule engine: compute_balance + to_products; label = every product in the schedule, sorted and joined with +",
+      "samples": {
+        "drawn": 12000,
+        "skipped": 0,
+        "unique_used": 12000,
+        "train": 9600,
+        "held_out": 2400,
+        "class_counts": {
+          "urea": 6433,
+          "dap+urea": 2302,
+          "none": 2186,
+          "dap+mop+urea": 683,
+          "dap": 189,
+          "mop+urea": 134,
+          "ssp+urea": 56,
+          "mop+ssp+urea": 14,
+          "dap+mop": 3
+        }
+      },
+      "cv_metrics": {
+        "accuracy": {
+          "mean": 0.9884,
+          "std": 0.0009,
+          "folds": 2
+        }
+      },
+      "test_metrics": {
+        "agreement_with_rule_engine": 0.9925,
+        "agreement_ci95": [
+          0.9888,
+          0.9958
+        ],
+        "macro_f1": 0.866,
+        "baseline_always_urea": 0.5358,
+        "per_class": {
+          "dap": {
+            "precision": 1.0,
+            "recall": 0.8684,
+            "support": 38
+          },
+          "dap+mop": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "support": 1
+          },
+          "dap+mop+urea": {
+            "precision": 0.9925,
+            "recall": 0.9708,
+            "support": 137
+          },
+          "dap+urea": {
+            "precision": 0.9849,
+            "recall": 0.9913,
+            "support": 460
+          },
+          "mop+ssp+urea": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "support": 3
+          },
+          "mop+urea": {
+            "precision": 0.9,
+            "recall": 1.0,
+            "support": 27
+          },
+          "none": {
+            "precision": 0.9977,
+            "recall": 1.0,
+            "support": 437
+          },
+          "ssp+urea": {
+            "precision": 1.0,
+            "recall": 0.9091,
+            "support": 11
+          },
+          "urea": {
+            "precision": 0.9953,
+            "recall": 0.9977,
+            "support": 1286
+          }
+        },
+        "per_crop_agreement": {
+          "barley": 0.9878,
+          "chickpea": 0.983,
+          "cotton": 0.9969,
+          "maize": 1.0,
+          "rice": 0.9833,
+          "sugarcane": 0.9972,
+          "wheat": 1.0
+        },
+        "confusion_matrix": {
+          "labels": [
+            "dap",
+            "dap+mop",
+            "dap+mop+urea",
+            "dap+urea",
+            "mop+ssp+urea",
+            "mop+urea",
+            "none",
+            "ssp+urea",
+            "urea"
+          ],
+          "rows_are_rule_engine": [
+            [
+              33,
+              0,
+              0,
+              4,
+              0,
+              0,
+              1,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              133,
+              0,
+              0,
+              3,
+              0,
+              0,
+              1
+            ],
+            [
+              0,
+              0,
+              0,
+              456,
+              0,
+              0,
+              0,
+              0,
+              4
+            ],
+            [
+              0,
+              0,
+              0,
+              0,
+              3,
+              0,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              0,
+              0,
+              27,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              437,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              10,
+              1
+            ],
+            [
+              0,
+              0,
+              0,
+              3,
+              0,
+              0,
+              0,
+              0,
+              1283
+            ]
+          ]
+        }
+      },
+      "dataset_source": "rule_engine_generated",
+      "dataset_hash": "635330e8f622",
+      "config_hash": "bb8cd4210635",
+      "rules_hash": "65b7871c",
+      "seed": 42,
+      "git_sha": "44c5e39",
+      "date": "2026-10-23T10:23:19.770679+00:00",
+      "run_id": "20261023T102319Z"
     }
   ]
 }

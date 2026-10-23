@@ -164,6 +164,25 @@ def test_saving_is_positive_when_the_farmer_used_much_more_than_the_plan():
     assert result["saving_inr_per_acre"] > 0
 
 
+def test_no_saving_is_claimed_when_the_plan_uses_a_product_with_no_price():
+    """An unpriced product counts as nothing in a cost, so comparing that cost with what the farmer spent
+    would show a saving that is only the missing price. The saving and previous cost are unknown instead."""
+    plan = [
+        {"stage": "planting", "fertilizer_type": "ssp", "quantity_kg_per_acre": 75.0, "apply_by": None, "timing_note": None},
+        {"stage": "planting", "fertilizer_type": "urea", "quantity_kg_per_acre": 130.0, "apply_by": None, "timing_note": None},
+    ]
+    usage = [{"type": "urea", "quantity_kg_per_acre": 200.0, "applied_on": "2026-11-01"}]
+    result = compare_to_history(plan, usage, PRODUCTS, TODAY, TABLES, "sugarcane")
+    assert result["saving_inr_per_acre"] is None and result["previous_cost_inr_per_acre"] is None
+    assert result["over_application_reduction_pct"] is not None  # the nutrient comparison needs no price
+
+
+def test_no_saving_is_claimed_when_the_earlier_application_used_a_product_with_no_price():
+    usage = [{"type": "ssp", "quantity_kg_per_acre": 100.0, "applied_on": "2026-11-01"}]
+    result = compare_to_history(WHEAT_SCHEDULE, usage, PRODUCTS, TODAY, TABLES, "wheat")
+    assert result["saving_inr_per_acre"] is None and result["previous_cost_inr_per_acre"] is None
+
+
 # ---------- compare_to_history: case 4, prices/price_date traceable ----------
 
 

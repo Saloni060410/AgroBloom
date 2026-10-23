@@ -166,6 +166,27 @@ def test_formula_conformity_within_tolerance(crop_id, variety, level):
             pytest.fail(f"{crop_id}/{variety}/{nutrient} ({level}): {violator}")
 
 
+@pytest.mark.parametrize("crop_id,nutrient", sorted(_KNOWN_NO_ADJUSTMENT_SOURCE))
+@pytest.mark.parametrize("level", ["low", "medium", "high"])
+def test_band_rule_doses_match_an_independent_recomputation(crop_id, nutrient, level):
+    """formula_conformity cannot check these: soil_adjustments.csv has no PAU row for them, which it reports
+    as a known gap. The doses the engine actually gives follow the soil-rating band rule, so recompute them
+    here straight from reference_doses.csv and the factors in agronomy_rules.yaml, not from the engine."""
+    from src.evaluation.metrics import _lookup_reference_dose
+
+    soil = {**_SOIL_EXTRAS, **LOW_MEDIUM_HIGH_SOIL[level]}
+    balance, _trace = compute_balance(
+        crop_id, None, "irrigated", _first_stage(crop_id), soil, [], TABLES, TODAY, rules=_RULES
+    )
+    entry = balance[nutrient]
+    resolved = _resolve_reference_dose(crop_id, None, "irrigated")
+    assert resolved is not None
+    standard_dose, reason = _lookup_reference_dose(TABLES, crop_id, resolved[0], "irrigated", resolved[1], nutrient)
+    assert reason is None
+    expected = standard_dose * _RULES["soil_rating_fallback"]["factors"][level]
+    assert entry["fertilizer_needed_kg_ha"] == pytest.approx(expected, abs=0.01), (crop_id, nutrient, level)
+
+
 @pytest.mark.parametrize(
     "crop_id,variety,level", CASES, ids=[f"{c}-{v or 'generic'}-{l}" for c, v, l in CASES]
 )

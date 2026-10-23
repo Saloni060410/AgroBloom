@@ -139,7 +139,8 @@ def load_soil_ratings(directory: Path) -> list[SoilRating]:
 
 
 def load_fertilizers(directory: Path) -> list[FertilizerProduct]:
-    """Only products with a price are returned. The engine never selects an unpriced product."""
+    """Only products with a price are returned. The engine can plan a product with no price (single
+    superphosphate for sugarcane), which therefore has no entry here: see docs/data-dictionary.md."""
     rows = _read(directory, "fertilizer_products.csv", {"product_id", "name", "n_pct", "p2o5_pct", "k2o_pct", "price_inr_per_kg"})
     products = []
     for row in rows:

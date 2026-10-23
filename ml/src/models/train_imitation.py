@@ -1,4 +1,4 @@
-"""Trains the rule-imitation classifier: a model taught to pick the same main product as the rule engine.
+"""Trains the rule-imitation classifier: a model taught to pick the same products as the rule engine.
 
     python -m src.models.train_imitation --config configs/imitation.yaml
 
@@ -6,8 +6,9 @@ Why it exists. The first classifier was trained on a synthetic dataset whose lab
 generator, not from the dose tables, so it disagreed with the rule-based plan about as often as it
 agreed. The rule-based plan is the one the project trusts (published tables, shown working), so this
 model is trained to follow it: random but realistic requests are drawn, the rule engine is asked what
-its main product would be (the "teacher"), and the classifier learns that answer from the crop, the
-irrigation, the growth stage and the soil's N, P and K.
+which products its plan would use (the "teacher": the set, e.g. "dap+urea", so superphosphate, potash and
+a plan with nothing to apply are told apart), and the classifier learns that answer from the crop, the
+irrigation, the growth stage, the soil's N, P and K and what was applied in the last weeks.
 
 What it is not. It adds no independent evidence: it reproduces the rules, and a high agreement score is
 a measure of imitation, not of agronomic correctness. The rule-based plan decides the dose and the
@@ -40,11 +41,11 @@ from sklearn.model_selection import StratifiedKFold, cross_val_score, train_test
 from sklearn.pipeline import Pipeline
 
 from src.engine.npk_calculator import compute_balance, to_products
-from src.engine.recommendation_engine import Engine, _pk_window_days, _primary_product
+from src.engine.recommendation_engine import Engine, _pk_window_days, plan_label
 from src.models import (
     train as first_trainer,  # paths and small helpers shared with the first classifier
 )
-from src.models.imitation_features import FEATURE_SET, build_imitation_features
+from src.models.imitation_features import FEATURE_SET, build_imitation_features, prior_supply
 from src.models.seeding import seed_everything
 
 # A fixed calendar anchor, so the draw is the same whatever day the model is trained.
@@ -90,23 +91,23 @@ def draw_requests(tables, n: int, seed: int) -> list[dict]:
     return requests
 
 
-def teacher_product(engine: Engine, request: dict) -> str:
-    """The rule engine's main product for this request. The same calls recommend() makes to decide it
-    (nutrient balance, then the split into products, then the largest total), without the risk, cost
-    and explanation layers that do not affect the choice. tests/test_imitation.py checks the two agree."""
+def teacher_label(engine: Engine, request: dict) -> str:
+    """Every product in the rule engine's plan for this request, as one label ("dap+urea"; "none" for an
+    empty plan). The same calls recommend() makes to decide it (nutrient balance, then the split into
+    products), without the risk, cost and explanation layers that do not affect the choice.
+    tests/test_imitation.py checks the two agree."""
     balance, _ = compute_balance(
         request["crop_id"], None, request["irrigation"], request["stage_id"], request["soil"], request["prior"],
         engine.tables, TODAY,
         credit_window_days=engine.rules["credit_window_days"],
         pk_window_days=_pk_window_days(engine, request["crop_id"]),
-        rainfall_history=[], rain_rules=engine.rules,
+        rainfall_history=[], rain_rules=engine.rules, rules=engine.rules,
     )
     schedule = to_products(
         balance, request["crop_id"], request["stage_id"], None, request["weather"], engine.tables, TODAY,
         rain_hold_mm=engine.rules["rain_hold_mm"], rain_hold_days=engine.rules["rain_hold_days"], recent_rain_mm=0.0,
     )
-    product, _ = _primary_product(schedule)
-    return product
+    return plan_label(schedule)
 
 
 def build_frame(engine: Engine, n: int, seed: int) -> tuple[pd.DataFrame, pd.Series, int]:
@@ -114,11 +115,18 @@ def build_frame(engine: Engine, n: int, seed: int) -> tuple[pd.DataFrame, pd.Ser
     rows, labels, skipped = [], [], 0
     for request in draw_requests(engine.tables, n, seed):
         try:
-            label = teacher_product(engine, request)
+            label = teacher_label(engine, request)
         except Exception:  # noqa: BLE001 -- a combination the tables do not cover; not a training row
             skipped += 1
             continue
-        rows.append({"crop_id": request["crop_id"], "irrigation": request["irrigation"], "stage_id": request["stage_id"], **{k: request["soil"][k] for k in ("n", "p", "k")}})
+        supplied = prior_supply(
+            request["prior"], engine.tables, TODAY, engine.rules["credit_window_days"],
+            _pk_window_days(engine, request["crop_id"]) or engine.rules["credit_window_days"],
+        )
+        rows.append({
+            "crop_id": request["crop_id"], "irrigation": request["irrigation"], "stage_id": request["stage_id"],
+            **{k: request["soil"][k] for k in ("n", "p", "k")}, **supplied,
+        })
         labels.append(label)
     X = build_imitation_features(rows, engine.tables)
     y = pd.Series(labels, name="product")
@@ -199,7 +207,7 @@ def train(config_path: Path, *, samples: int | None = None, artifact_dir: Path |
         "artifact": str(artifact_path.relative_to(project_root)),
         "labels": str(labels_path.relative_to(project_root)),
         "labels_note": "predict_proba columns follow this list; decode with labels[index]",
-        "teacher": "rule engine: compute_balance + to_products, main product = largest total across the schedule",
+        "teacher": "rule engine: compute_balance + to_products; label = every product in the schedule, sorted and joined with +",
         "samples": {"drawn": int(samples or config["samples"]), "skipped": skipped, "unique_used": len(X), "train": len(X_train), "held_out": len(X_held), "class_counts": {str(k): int(v) for k, v in y.value_counts().items()}},
         "cv_metrics": {"accuracy": {"mean": round(float(np.nanmean(cv)), 4), "std": round(float(np.nanstd(cv)), 4), "folds": len(cv)}},
         "test_metrics": test_metrics,

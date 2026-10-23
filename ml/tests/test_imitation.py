@@ -3,6 +3,7 @@ feeding it. Everything runs on the real reference tables; models are trained int
 repository's registry is never touched."""
 
 import json
+import shutil
 from pathlib import Path
 
 import pytest
@@ -10,14 +11,14 @@ import pytest
 from src.api.schemas import RecommendRequest
 from src.data_pipeline.soil_data_loader import load_reference_tables
 from src.engine import recommendation_engine as engine_module
-from src.engine.recommendation_engine import Engine, recommend
+from src.engine.recommendation_engine import Engine, plan_label, recommend
 from src.models.imitation_features import (
     FEATURE_SET,
     build_imitation_features,
     feature_columns,
     stage_order,
 )
-from src.models.train_imitation import TODAY, draw_requests, teacher_product, train
+from src.models.train_imitation import TODAY, draw_requests, teacher_label, train
 
 CONFIG = Path(__file__).resolve().parents[1] / "configs" / "imitation.yaml"
 
@@ -32,6 +33,10 @@ def engine():
     return Engine()
 
 
+def plan_set(response) -> str:
+    return plan_label([item.model_dump() for item in response.recommendation.schedule])
+
+
 def as_request(sample: dict) -> RecommendRequest:
     return RecommendRequest(
         field_id="f", crop_type=sample["crop_id"], irrigation=sample["irrigation"], growth_stage=sample["stage_id"],
@@ -41,9 +46,10 @@ def as_request(sample: dict) -> RecommendRequest:
 
 @pytest.fixture(scope="module")
 def trained(tmp_path_factory):
-    """One small training run shared by the tests below (about 1 s)."""
+    """One training run shared by the tests below (a few seconds). Nothing may train into this folder
+    again: the engine takes the LAST model in a registry as the active one."""
     root = tmp_path_factory.mktemp("imitation")
-    entry = train(CONFIG, samples=1500, artifact_dir=root / "models_artifacts", registry_path=root / "registry.json", runs_dir=root / "runs")
+    entry = train(CONFIG, samples=6000, artifact_dir=root / "models_artifacts", registry_path=root / "registry.json", runs_dir=root / "runs")
     return root, entry
 
 
@@ -51,7 +57,7 @@ def trained(tmp_path_factory):
 
 def test_columns_are_fixed_and_follow_the_reference_tables(tables):
     columns = feature_columns(tables)
-    assert columns[-5:] == ["irrigated", "stage_order", "n", "p", "k"]
+    assert columns[-8:] == ["irrigated", "stage_order", "n", "p", "k", "prior_n", "prior_p", "prior_k"]
     assert [c for c in columns if c.startswith("crop_id__")] == sorted(f"crop_id__{r['crop_id']}" for r in tables.crops)
     one = build_imitation_features([{"crop_id": "wheat", "irrigation": "irrigated", "stage_id": "sowing", "n": 300, "p": 15, "k": 150}], tables)
     rice_first = next(r["stage_id"] for r in tables.growth_stages if r["crop_id"] == "rice")  # transplanted: no "sowing"
@@ -77,12 +83,12 @@ def test_the_draw_is_reproducible_and_covers_every_crop(tables):
     assert {r["crop_id"] for r in first} == {row["crop_id"] for row in tables.crops}
 
 
-def test_the_fast_teacher_picks_the_same_product_as_the_full_recommendation(engine, tables):
+def test_the_fast_teacher_picks_the_same_products_as_the_full_recommendation(engine, tables):
     """The teacher skips the risk, cost and explanation layers for speed. It must still decide exactly
     as recommend() does, or the model would imitate something other than the plan people see."""
     samples = draw_requests(tables, 60, seed=11)
     disagreements = [
-        (s["crop_id"], s["stage_id"], teacher_product(engine, s), recommend(as_request(s), engine, TODAY).recommendation.fertilizer_type)
+        (s["crop_id"], s["stage_id"], teacher_label(engine, s), plan_set(recommend(as_request(s), engine, TODAY)))
         for s in samples
     ]
     assert all(teacher == full for _, _, teacher, full in disagreements), [d for d in disagreements if d[2] != d[3]]
@@ -106,18 +112,24 @@ def test_training_agrees_with_the_rules_far_above_the_baseline_and_records_the_r
     assert (root / "runs" / entry["run_id"] / "metrics.json").exists()
 
 
-def test_the_same_seed_gives_the_same_data_and_the_same_result(trained, tmp_path):
-    _, first = trained
-    again = train(CONFIG, samples=1500, artifact_dir=tmp_path / "models_artifacts", registry_path=tmp_path / "registry.json", runs_dir=tmp_path / "runs")
-    assert again["dataset_hash"] == first["dataset_hash"]
-    assert again["test_metrics"]["agreement_with_rule_engine"] == first["test_metrics"]["agreement_with_rule_engine"]
+def test_the_same_seed_gives_the_same_data_and_the_same_result(tmp_path):
+    runs = [
+        train(CONFIG, samples=1500, artifact_dir=tmp_path / name / "models_artifacts", registry_path=tmp_path / name / "registry.json", runs_dir=tmp_path / name / "runs")
+        for name in ("first", "again")
+    ]
+    assert runs[0]["dataset_hash"] == runs[1]["dataset_hash"]
+    assert runs[0]["test_metrics"]["agreement_with_rule_engine"] == runs[1]["test_metrics"]["agreement_with_rule_engine"]
 
 
 def test_a_second_run_becomes_the_next_version_and_never_overwrites(trained, tmp_path):
+    """Trains into a copy: the shared run's registry must keep its one model, or the engine tests below
+    would load whichever model was trained last."""
     root, first = trained
-    second = train(CONFIG, samples=600, artifact_dir=root / "models_artifacts", registry_path=root / "registry.json", runs_dir=root / "runs")
+    copy = tmp_path / "copy"
+    shutil.copytree(root, copy)
+    second = train(CONFIG, samples=600, artifact_dir=copy / "models_artifacts", registry_path=copy / "registry.json", runs_dir=copy / "runs")
     assert first["version"] == "0.1.0" and second["version"] == "0.1.1"
-    assert (root / first["artifact"]).exists()
+    assert (copy / first["artifact"]).exists()
 
 
 # ---- the engine --------------------------------------------------------------------------------
@@ -138,12 +150,13 @@ def test_the_engine_loads_the_model_and_names_it_in_the_version(engine_with_imit
 
 
 def test_it_rarely_disagrees_with_the_plan_it_was_trained_on(engine_with_imitation_model, tables):
-    samples = draw_requests(tables, 80, seed=99)  # different seed from training: unseen requests
+    samples = draw_requests(tables, 300, seed=99)  # different seed from training: unseen requests
     notes = [
         any("classifier" in n and "differed" in n for n in recommend(as_request(s), engine_with_imitation_model, TODAY).explanation.data_notes)
         for s in samples
     ]
-    assert sum(notes) / len(notes) <= 0.06
+    # Measured 1 to 2% with the model trained here; a model trained on a tenth of the data gives 4 to 7%.
+    assert sum(notes) / len(notes) <= 0.04
 
 
 def test_a_model_for_inputs_the_engine_cannot_build_gives_no_opinion_and_no_failure(engine_with_imitation_model, tables):
@@ -151,7 +164,7 @@ def test_a_model_for_inputs_the_engine_cannot_build_gives_no_opinion_and_no_fail
     engine.model.feature_set = "some_future_feature_set"
     sample = draw_requests(tables, 1, seed=3)[0]
     response = recommend(as_request(sample), engine, TODAY)
-    assert response.recommendation.fertilizer_type == teacher_product(engine, sample)
+    assert plan_set(response) == teacher_label(engine, sample)
     assert not any("differed" in n for n in response.explanation.data_notes)
 
 
@@ -169,7 +182,7 @@ def test_the_model_can_load_in_the_background_while_plans_are_already_served(tra
     engine = Engine()
     assert engine.model_loading or engine.model is not None  # returned without waiting for the load
     sample = draw_requests(tables, 1, seed=5)[0]
-    assert recommend(as_request(sample), engine, TODAY).recommendation.fertilizer_type == teacher_product(engine, sample)
+    assert plan_set(recommend(as_request(sample), engine, TODAY)) == teacher_label(engine, sample)
 
     deadline = time.time() + 30
     while engine.model is None and time.time() < deadline:
