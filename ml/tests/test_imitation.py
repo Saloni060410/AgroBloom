@@ -41,9 +41,10 @@ def as_request(sample: dict) -> RecommendRequest:
 
 @pytest.fixture(scope="module")
 def trained(tmp_path_factory):
-    """One small training run shared by the tests below (about 1 s)."""
+    """One training run shared by the tests below (a few seconds). 6,000 draws: the soil-rating bands add
+    steps to the rules that 1,500 draws learn less well."""
     root = tmp_path_factory.mktemp("imitation")
-    entry = train(CONFIG, samples=1500, artifact_dir=root / "models_artifacts", registry_path=root / "registry.json", runs_dir=root / "runs")
+    entry = train(CONFIG, samples=6000, artifact_dir=root / "models_artifacts", registry_path=root / "registry.json", runs_dir=root / "runs")
     return root, entry
 
 
@@ -108,7 +109,7 @@ def test_training_agrees_with_the_rules_far_above_the_baseline_and_records_the_r
 
 def test_the_same_seed_gives_the_same_data_and_the_same_result(trained, tmp_path):
     _, first = trained
-    again = train(CONFIG, samples=1500, artifact_dir=tmp_path / "models_artifacts", registry_path=tmp_path / "registry.json", runs_dir=tmp_path / "runs")
+    again = train(CONFIG, samples=6000, artifact_dir=tmp_path / "models_artifacts", registry_path=tmp_path / "registry.json", runs_dir=tmp_path / "runs")
     assert again["dataset_hash"] == first["dataset_hash"]
     assert again["test_metrics"]["agreement_with_rule_engine"] == first["test_metrics"]["agreement_with_rule_engine"]
 
@@ -138,7 +139,7 @@ def test_the_engine_loads_the_model_and_names_it_in_the_version(engine_with_imit
 
 
 def test_it_rarely_disagrees_with_the_plan_it_was_trained_on(engine_with_imitation_model, tables):
-    samples = draw_requests(tables, 80, seed=99)  # different seed from training: unseen requests
+    samples = draw_requests(tables, 300, seed=99)  # different seed from training: unseen requests; 300, as 80 swings by a few points
     notes = [
         any("classifier" in n and "differed" in n for n in recommend(as_request(s), engine_with_imitation_model, TODAY).explanation.data_notes)
         for s in samples

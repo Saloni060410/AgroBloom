@@ -44,7 +44,7 @@ for its main product ("teacher"):
 | Growth stage | any stage of that crop's season, uniformly |
 | Soil | N 80 to 700, P 3 to 60, K 40 to 520 kg/ha (pH, organic carbon, moisture also drawn; the model does not use them) |
 | Earlier applications | half the draws have one or two (urea, DAP or MOP, 10 to 80 kg/acre, 3 to 55 days ago); the model does not see them |
-| Labels | urea 8,845, none 2,179, dap 976 |
+| Labels | urea 8,850, none 2,186, dap 964 |
 | Draw anchor date | fixed (2026-10-22), so the data does not depend on the day it is trained |
 
 The sampling is uniform, not drawn from real farms, so the model is accurate on the kinds of requests the
@@ -55,8 +55,8 @@ tables cover and says nothing about how often farmers hit each case.
 `rule_imitation_v1` (`src/models/imitation_features.py`): one-hot crop, irrigated (0 or 1), stage order
 within the season, and the soil's N, P, K. The growth stage is the part that matters: with only the
 original classifier's inputs (crop, weather, N, P, K) the best a model reached was 81.6% agreement,
-against 99.1% with the stage added. Adding pH, organic carbon, irrigation and earlier applications on top
-did not move it.
+against 98.4% with the stage added (99.1% before the soil-rating bands were added to the rules).
+Adding pH, organic carbon, irrigation and earlier applications on top did not move it.
 
 ## Evaluation protocol
 
@@ -69,33 +69,34 @@ did not move it.
 
 | Held-out agreement with the rule engine | |
 |---|---|
-| Agreement | **99.1%** (95% CI 98.7 to 99.4) |
-| Macro F1 | 0.978 |
-| Cross-validated (training part) | 98.9% (+/- 0.2 across 5 folds) |
-| Baseline: always predict urea | 73.7% |
+| Agreement | **98.4%** (95% CI 97.9 to 98.9) |
+| Macro F1 | 0.962 |
+| Cross-validated (training part) | 98.5% (+/- 0.2 across 5 folds) |
+| Baseline: always predict urea | 73.8% |
 | Original classifier on a different, comparable sample (3,000 requests) | 54.5% |
-| End-to-end: fresh 500 requests through the full recommendation, new seed | 99.4% (3 differences) |
+| End-to-end: fresh 500 requests through the full recommendation, new seed | 99.0% (5 differences) |
 
 | Product | Precision | Recall | Held-out count |
 |---|---|---|---|
-| urea | 0.989 | 1.000 | 1,769 |
-| none (no fertilizer needed) | 1.000 | 0.993 | 436 |
-| dap | 0.983 | 0.903 | 195 |
+| urea | 0.988 | 0.993 | 1,770 |
+| none (no fertilizer needed) | 1.000 | 0.991 | 437 |
+| dap | 0.910 | 0.891 | 193 |
 
-Confusion (rows are the rule engine): of 195 DAP cases, 176 were predicted DAP and 19 urea; of 436 "none",
-433 were predicted "none" and 3 DAP; all 1,769 urea cases were predicted urea.
+Confusion (rows are the rule engine): of 193 DAP cases, 172 were predicted DAP and 21 urea; of 437 "none",
+433 were predicted "none" and 4 DAP; of 1,770 urea cases, 1,757 were predicted urea and 13 DAP.
 
-By crop: cotton, rice, sugarcane 100%; maize 99.7%; chickpea 99.1%; wheat 99.2%; **barley 95.5%** (the
-smallest group).
+By crop: cotton, rice, sugarcane 100%; maize 98.5%; wheat 98.9%; barley 96.1%; **chickpea 95.5%** (the
+lowest).
 
 ## Limitations and failure modes
 
 - **Agreement is not correctness.** If a rule or a table value is wrong, this model learns the error. That
   includes the values marked "team assumption" in `agronomy_rules.yaml`.
 - **The misses cluster at the first stage**, where the rules sit on the line between a phosphorus product
-  (DAP) and urea, and between "no fertilizer needed" and DAP. DAP recall is 90%.
+  (DAP) and urea, and between "no fertilizer needed" and DAP. DAP recall is 89%. The soil-rating bands
+  (`soil_rating_fallback` in `agronomy_rules.yaml`) put more of those lines inside the sampled range, which is why agreement fell from 99.1% to 98.4%.
 - It does not see weather, rainfall or earlier applications, so a request where those decide the main
-  product can differ. In the end-to-end check 3 of 500 requests differed (all at the first stage); I did
+  product can differ. In the end-to-end check 5 of 500 requests differed (all at the first stage); I did
   not isolate whether those inputs were the cause.
 - It is accurate only for the rules it was trained on. Any change to `data/external/` or to the engine
   changes the rules hash, and the model must be retrained (see below).
