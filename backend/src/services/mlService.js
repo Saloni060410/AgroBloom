@@ -88,7 +88,7 @@ const recommendResponseSchema = z.object({
 const nutrientAppliedSchema = z.object({
   applied_kg_ha: z.number(),
   recommended_kg_ha: z.number(),
-  ratio: z.number(),
+  ratio: z.number().nullable(), // null: the crop needs none of this nutrient but some is planned
 })
 
 const riskScoreResponseSchema = z.object({

@@ -237,25 +237,37 @@ async function upsertScenarioFarmAndField(scenario, ownerId) {
   return fieldRow;
 }
 
-async function pregenerateRecommendation(fieldId) {
-  const existing = await prisma.recommendation.count({ where: { fieldId } });
-  if (existing > 0) {
-    console.log(`  recommendation already exists for ${fieldId}, skipping`);
-    return;
-  }
+// One groupBy for every field, not a count per field: the old loop ran one query per field just to
+// learn which ones already had a plan. Logs in lazily (once, for the first field that needs a plan).
+async function pregenerateRecommendations(fieldIds) {
+  if (fieldIds.length === 0) return;
 
-  const login = await axios.post(`${API_BASE_URL}/api/auth/login`, {
-    email: DEMO_EMAIL,
-    password: DEMO_PASSWORD,
-  });
-  const { accessToken } = login.data;
-
-  await axios.post(
-    `${API_BASE_URL}/api/fields/${fieldId}/recommendations`,
-    {},
-    { headers: { Authorization: `Bearer ${accessToken}` } }
+  const withPlan = new Set(
+    (await prisma.recommendation.groupBy({ by: ["fieldId"], where: { fieldId: { in: fieldIds } } })).map((row) => row.fieldId)
   );
-  console.log(`  recommendation created for ${fieldId}`);
+
+  let accessToken = null;
+  for (const fieldId of fieldIds) {
+    if (withPlan.has(fieldId)) {
+      console.log(`  recommendation already exists for ${fieldId}, skipping`);
+      continue;
+    }
+
+    if (accessToken === null) {
+      const login = await axios.post(`${API_BASE_URL}/api/auth/login`, {
+        email: DEMO_EMAIL,
+        password: DEMO_PASSWORD,
+      });
+      accessToken = login.data.accessToken;
+    }
+
+    await axios.post(
+      `${API_BASE_URL}/api/fields/${fieldId}/recommendations`,
+      {},
+      { headers: { Authorization: `Bearer ${accessToken}` } }
+    );
+    console.log(`  recommendation created for ${fieldId}`);
+  }
 }
 
 async function seedDemoScenarios({ reset, withRecommendations }) {
@@ -283,9 +295,7 @@ async function seedDemoScenarios({ reset, withRecommendations }) {
   if (withRecommendations) {
     console.log(`Pre-generating recommendations through ${API_BASE_URL} (optional step)...`);
     try {
-      for (const field of fields) {
-        await pregenerateRecommendation(field.id);
-      }
+      await pregenerateRecommendations(fields.map((field) => field.id));
     } catch (err) {
       // Optional, per the task -- the seed data itself (farms/fields/soil tests/logs) is
       // already committed above regardless of whether this step succeeds. A down ML service,

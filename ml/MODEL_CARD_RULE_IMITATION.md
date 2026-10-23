@@ -2,7 +2,7 @@
 
 A small classifier taught to name the same set of fertilizer products as the rule engine. It replaces the
 original `fertilizer-classifier-0.1.1` (see `MODEL_CARD.md`) as the active model. Every number below comes
-from the registry entry for this model in `src/models/model_registry/registry.json` (version 0.1.2) and its
+from the registry entry for this model in `src/models/model_registry/registry.json` (version 0.1.4) and its
 run record in `models_artifacts/runs/<run_id>/metrics.json`, except the "end-to-end" figures, which were
 measured separately and are described where they appear.
 
@@ -22,7 +22,7 @@ and the rule engine decides the dose and the product either way.
 
 Only the products the rule engine plans: urea (nitrogen), muriate of potash `mop` (potassium), and for
 phosphorus DAP `dap` or single superphosphate `ssp`. Single superphosphate is the phosphorus source for
-sugarcane, which is how PAU's table lists it. The NPK and NP blends in `fertilizer_products.csv` are never
+sugarcane and gram, which is how PAU's tables list it. The NPK and NP blends in `fertilizer_products.csv` are never
 planned, because PAU's recommendations for these crops are given as urea, DAP or superphosphate, and
 potash; a blend would add phosphorus or potassium the soil test did not call for. For wheat and maize the
 plan's note offers NP 20-20-0 as an equal alternative (PAU's "nitrophosphate"), but that is a note, not the
@@ -55,12 +55,12 @@ which products its plan uses ("teacher"):
 | Growth stage | any stage of that crop's season, uniformly |
 | Soil | N 80 to 700, P 3 to 60, K 40 to 520 kg/ha (pH, organic carbon, moisture also drawn; the model does not use them) |
 | Earlier applications | half the draws have one or two (urea, DAP or MOP, 10 to 80 kg/acre, 3 to 55 days ago) |
-| Labels | urea 6,433; dap+urea 2,302; none 2,186; dap+mop+urea 683; dap 189; mop+urea 134; ssp+urea 56; mop+ssp+urea 14; dap+mop 3 |
+| Labels | urea 6,433; none 2,186; dap+urea 2,057; ssp+urea 761; dap+mop+urea 264; ssp 136; mop+urea 134; mop+ssp+urea 14; dap 12; dap+mop 3 |
 | Draw anchor date | fixed (2026-10-22), so the data does not depend on the day it is trained |
 
 The sampling is uniform, not drawn from real farms, so the model is accurate on the kinds of requests the
-tables cover and says nothing about how often farmers hit each case. Plans with superphosphate come only
-from sugarcane that is low in phosphorus, so they are rare (70 of 12,000).
+tables cover and says nothing about how often farmers hit each case. Plans with superphosphate come from
+sugarcane (when low in phosphorus) and gram, 911 of 12,000.
 
 ## Inputs
 
@@ -72,7 +72,7 @@ the credit window, as gross amounts with no efficiency or rain logic. Two measur
   best a model reached was 81.6% agreement on the old one-product label.
 - Earlier applications matter for the product-set label: enough nitrogen from an earlier application
   removes the urea from the plan, enough phosphorus removes the DAP. A forest that could not see them
-  agreed with the plan on about 96.2% of held-out requests; with them as inputs it agrees on 99.2%. pH,
+  agreed with the plan on about 96.2% of held-out requests; with them as inputs it agrees on 99.3%. pH,
   organic carbon, moisture and weather are not inputs: they move no dose.
 
 ## Evaluation protocol
@@ -87,37 +87,38 @@ the credit window, as gross amounts with no efficiency or rain logic. Two measur
 
 | Held-out agreement with the rule engine | |
 |---|---|
-| Agreement | **99.2%** (95% CI 98.9 to 99.6) |
-| Macro F1 | 0.866 (see the note below) |
-| Cross-validated (training part, 2 folds) | 98.8% (+/- 0.1) |
+| Agreement | **99.3%** (95% CI 99.0 to 99.6) |
+| Macro F1 | 0.789 (see the note below) |
+| Cross-validated (training part, 2 folds) | 99.2% (+/- 0.1) |
 | Baseline: always predict the commonest label (urea) | 53.6% |
-| End-to-end: fresh 500 requests through the full recommendation | 99.0% (5 differences, seed 99) and 99.4% (3 differences, seed 2024) |
+| End-to-end: fresh 500 requests through the full recommendation | 99.0% (5 differences, seed 99) and 99.8% (1 difference, seed 2024) |
 
 | Label | Precision | Recall | Held-out count |
 |---|---|---|---|
-| urea | 0.995 | 0.998 | 1,286 |
-| dap+urea | 0.985 | 0.991 | 460 |
-| none (nothing to apply) | 0.998 | 1.000 | 437 |
-| dap (urea not needed) | 1.000 | 0.868 | 38 |
-| dap+mop+urea | 0.993 | 0.971 | 137 |
-| mop+urea | 0.900 | 1.000 | 27 |
-| ssp+urea | 1.000 | 0.909 | 11 |
+| urea | 0.995 | 0.997 | 1,287 |
+| none (nothing to apply) | 1.000 | 0.993 | 437 |
+| dap+urea | 0.990 | 0.993 | 411 |
+| ssp+urea | 0.968 | 1.000 | 152 |
+| dap+mop+urea | 0.980 | 0.943 | 53 |
+| ssp | 1.000 | 0.963 | 27 |
+| mop+urea | 0.964 | 1.000 | 27 |
 | mop+ssp+urea | 1.000 | 1.000 | 3 |
+| dap | 0.000 | 0.000 | 2 |
 | dap+mop | 0.000 | 0.000 | 1 |
 
-**Macro F1 is pulled down by tiny classes.** It averages the nine labels equally, and `dap+mop` has one
-held-out example, which the model missed; that one label alone costs about 0.11. The always-urea baseline
-scores 53.6% here because urea alone is only about half of the plans, unlike the one-product label where it
-was 73.8%.
+**Macro F1 is pulled down by tiny classes.** It averages the ten labels equally, and `dap` and `dap+mop`
+have two and one held-out examples, all missed; those two labels alone cost about 0.2. The always-urea
+baseline scores 53.6% here because urea alone is only about half of the plans, unlike the one-product label
+where it was 73.8%.
 
-By crop: wheat 100%, maize 100%, sugarcane 99.7%, cotton 99.7%, barley 98.8%, rice 98.3%, chickpea 98.3%.
+By crop: wheat 100%, maize 100%, sugarcane 100%, cotton 99.7%, barley 99.1%, rice 98.4%, chickpea 97.9%.
 
 ## Limitations and failure modes
 
 - **Agreement is not correctness.** If a rule or a table value is wrong, this model learns the error. That
   includes the values marked "team assumption" in `agronomy_rules.yaml`.
-- **Misses are at the edges of a rule.** The held-out errors are a few `dap` plans (urea just not needed)
-  predicted as `dap+urea`, and the rare labels.
+- **Misses are at the edges of a rule.** The held-out errors are in the rare labels, such as `dap` alone
+  (urea just not needed) predicted as `dap+urea`.
 - It does not see weather, rainfall or the rain-reduced nitrogen credit, so a request where recent rain
   decides whether urea is needed can differ. It sees earlier applications only as amounts inside the credit
   window, not their age.

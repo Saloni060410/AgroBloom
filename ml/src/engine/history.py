@@ -22,6 +22,7 @@ from itertools import pairwise
 
 from src.data_pipeline.feature_engineering import soil_rating
 from src.data_pipeline.soil_data_loader import ReferenceTables
+from src.engine.stage_timing import window_das
 from src.evaluation.explainability import render_template
 
 _PARAM_LABEL = {
@@ -55,8 +56,8 @@ def stage_from_sowing(tables: ReferenceTables, crop_id: str, sowing_date: date |
     das = (today - _as_date(sowing_date)).days
     reached = None
     for row in sorted((r for r in tables.growth_stages if r["crop_id"] == crop_id), key=lambda r: int(r["order"])):
-        start = _parse_float(row["das_start"])
-        if start is not None and start <= das:
+        window = window_das(tables, row, late_transplant=True)
+        if window is not None and window[0] <= das:
             reached = row
     return reached
 

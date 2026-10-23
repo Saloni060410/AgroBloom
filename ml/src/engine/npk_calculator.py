@@ -25,6 +25,7 @@ from datetime import date, timedelta
 
 from src.data_pipeline.feature_engineering import soil_rating
 from src.data_pipeline.soil_data_loader import ReferenceTables
+from src.engine.stage_timing import window_das
 
 ACRES_PER_HECTARE = 2.4711  # 1 ha = 2.4711 acre (contract C1)
 
@@ -426,13 +427,33 @@ def _schedule_lines(tables: ReferenceTables, crop_id: str, from_order: int) -> l
     return sorted(lines, key=lambda line: line.order)
 
 
-def _stage_apply_by(tables: ReferenceTables, crop_id: str, stage_id: str, sowing_date: date) -> tuple[date | None, str | None]:
+def _day_label(day: date) -> str:
+    return f"{day.day} {day.strftime('%b')}"
+
+
+def _stage_apply_by(
+    tables: ReferenceTables, crop_id: str, stage_id: str, sowing_date: date, *, basal: bool = False
+) -> tuple[date | None, str | None]:
+    """(best-before date, timing note) for an application at this stage.
+
+    The date is the last sourced day of the stage's window for a nitrogen top-dressing, and the first day
+    for a basal dose (phosphorus and potash go on before or at the stage, never after it). The note is
+    PAU's own instruction for the stage (growth_stages.csv timing_hint) plus the date window when the
+    stage has one. A stage whose days are not sourced has no date, only the instruction."""
     row = _stage_row(tables, crop_id, stage_id)
-    das_start = _parse_float(row["das_start"])
     label = row["name_en"]
-    if das_start is None:
-        return None, f"At {label}"
-    return sowing_date + timedelta(days=int(das_start)), None
+    hint = (row.get("timing_hint") or "").strip()
+    window = window_das(tables, row)
+    if window is None:
+        return None, hint or f"At {label}"
+    first, last = (sowing_date + timedelta(days=round(day)) for day in window)
+    apply_by = first if basal else last
+    note = hint
+    if last > first:
+        note = f"{hint} Best between {_day_label(first)} and {_day_label(last)}.".strip()
+    elif hint and (row.get("counted_from") or "sowing").strip() == "transplanting":
+        note = f"{hint} About {_day_label(first)}."
+    return apply_by, note or f"At {label}"
 
 
 def _effective_sowing_date(tables: ReferenceTables, crop_id: str, growth_stage: str, today: date) -> date | None:
@@ -440,10 +461,10 @@ def _effective_sowing_date(tables: ReferenceTables, crop_id: str, growth_stage: 
     and back-derive the sowing date that implies -- contract C1. None if the current stage's
     own timing isn't sourced either, in which case nothing downstream can be dated."""
     row = _stage_row(tables, crop_id, growth_stage)
-    start, end = _parse_float(row["das_start"]), _parse_float(row["das_end"])
-    if start is None or end is None:
+    window = window_das(tables, row)
+    if window is None:
         return None
-    midpoint = (start + end) / 2
+    midpoint = sum(window) / 2
     return today - timedelta(days=round(midpoint))
 
 
@@ -457,34 +478,53 @@ def phosphorus_sources(tables: ReferenceTables, crop_id: str) -> tuple[str, list
     return "dap", []
 
 
-def phosphorus_alternatives(schedule: list[dict], crop_id: str, tables: ReferenceTables) -> dict | None:
+def alternative_timing(tables: ReferenceTables, crop_id: str, product_id: str) -> str | None:
+    """What PAU says about timing when this alternative supplies the phosphorus (phosphorus_sources.csv
+    `alternative_timing`, written as product=text joined with |), or None."""
+    for row in tables.phosphorus_sources:
+        if row["crop_id"] == crop_id:
+            for item in (row.get("alternative_timing") or "").split("|"):
+                product, _, text = item.partition("=")
+                if product.strip() == product_id and text.strip():
+                    return text.strip()
+    return None
+
+
+def phosphorus_alternatives(schedule: list[dict], crop_id: str, tables: ReferenceTables, plan_with) -> dict | None:
     """The same phosphorus supplied by each alternative product, for the farmer who cannot get the first one.
-    The schedule's phosphorus line fixes how much P2O5 is needed; each alternative's quantity follows from its
-    P2O5 share, and the urea changes by the difference in nitrogen the two products carry (a product with N
-    replaces some urea; one without it does not). Quantities are kg per acre. None when the plan has no
-    phosphorus product or the crop lists no alternatives."""
+    `plan_with(product_id)` is the plan rebuilt with that phosphorus product (to_products with the same
+    inputs), so the quantity and the change in urea are exactly what that plan would say: they account for
+    the nitrogen the product carries, for nitrogen already credited from earlier applications, and for urea
+    that was never needed. Quantities are kg per acre. None when the plan has no phosphorus product or the
+    crop lists no alternatives."""
     primary_id, alternative_ids = phosphorus_sources(tables, crop_id)
     products = _fertilizer_products(tables)
     line = next((item for item in schedule if item["fertilizer_type"] == primary_id), None)
     if line is None or not alternative_ids or primary_id not in products:
         return None
+
+    def urea_of(plan: list[dict]) -> float:
+        return sum(item["quantity_kg_per_acre"] for item in plan if item["fertilizer_type"] == "urea")
+
     primary = products[primary_id]
     p2o5_kg = line["quantity_kg_per_acre"] * float(primary["p2o5_pct"]) / 100
-    urea_n = float(products["urea"]["n_pct"]) / 100 if "urea" in products else None
     options = []
     for product_id in alternative_ids:
         product = products.get(product_id)
         if product is None or float(product["p2o5_pct"]) <= 0:
             continue
-        quantity = p2o5_kg / (float(product["p2o5_pct"]) / 100)
-        n_difference = (line["quantity_kg_per_acre"] * float(primary["n_pct"]) - quantity * float(product["n_pct"])) / 100
+        plan = plan_with(product_id)
+        alt_line = next((item for item in plan if item["fertilizer_type"] == product_id), None)
+        if alt_line is None:
+            continue
         options.append(
             {
                 "product_id": product_id,
                 "name": product["name"],
-                "quantity_kg_per_acre": round(quantity, 1),
+                "quantity_kg_per_acre": round(alt_line["quantity_kg_per_acre"], 1),
                 # more urea (+) when the alternative carries less nitrogen than the first product, less (-) when more
-                "urea_change_kg_per_acre": round(n_difference / urea_n, 1) if urea_n else None,
+                "urea_change_kg_per_acre": round(urea_of(plan) - urea_of(schedule), 1),
+                "timing": alternative_timing(tables, crop_id, product_id),
             }
         )
     if not options:
@@ -503,6 +543,7 @@ def to_products(
     rain_hold_mm: float | None = None,
     rain_hold_days: int | None = None,
     recent_rain_mm: float = 0.0,
+    p_product: str | None = None,
 ) -> list[dict]:
     """Splits nutrient_balance's fertilizer_needed_kg_ha across the stages not yet passed
     (split_schedule.csv), dates each stage from growth_stages.csv das_start counted from
@@ -523,7 +564,9 @@ def to_products(
 
     Nitrogen top-dressing (urea) is delayed by rain_hold_days when rainfall_mm_forecast is at
     or above rain_hold_mm, or when recent_rain_mm (rain that actually fell in the last few days)
-    is: saturated soil loses nitrogen the same way a coming downpour would make it."""
+    is: saturated soil loses nitrogen the same way a coming downpour would make it.
+
+    p_product replaces the crop's usual phosphorus product (used to price out the alternatives)."""
     rain_hold_mm = 20.0 if rain_hold_mm is None else rain_hold_mm
     rain_hold_days = 2 if rain_hold_days is None else rain_hold_days
     products = _fertilizer_products(tables)
@@ -577,12 +620,12 @@ def to_products(
 
     if p_lines and nutrient_balance["p"]["fertilizer_needed_kg_ha"] > 0:
         line = p_lines[0]
-        p_product_id, _ = phosphorus_sources(tables, crop_id)
+        p_product_id = p_product or phosphorus_sources(tables, crop_id)[0]
         product = product_row(p_product_id, "p")
         p_needed = nutrient_balance["p"]["fertilizer_needed_kg_ha"] * line.fraction
         quantity = round(p_needed / ACRES_PER_HECTARE / (float(product["p2o5_pct"]) / 100), 3)
         n_credit_remaining += quantity * float(product["n_pct"]) / 100 * ACRES_PER_HECTARE
-        apply_by, note = _stage_apply_by(tables, crop_id, line.stage, effective_sowing) if effective_sowing else (None, "At " + line.stage.replace("_", " "))
+        apply_by, note = _stage_apply_by(tables, crop_id, line.stage, effective_sowing, basal=True) if effective_sowing else (None, "At " + line.stage.replace("_", " "))
         schedule.append(_schedule_item(line.stage, p_product_id, quantity, apply_by, note))
 
     if k_lines and nutrient_balance["k"]["fertilizer_needed_kg_ha"] > 0:
@@ -590,7 +633,7 @@ def to_products(
         product = product_row("mop", "k")
         k_needed = nutrient_balance["k"]["fertilizer_needed_kg_ha"] * line.fraction
         quantity = round(k_needed / ACRES_PER_HECTARE / (float(product["k2o_pct"]) / 100), 3)
-        apply_by, note = _stage_apply_by(tables, crop_id, line.stage, effective_sowing) if effective_sowing else (None, "At " + line.stage.replace("_", " "))
+        apply_by, note = _stage_apply_by(tables, crop_id, line.stage, effective_sowing, basal=True) if effective_sowing else (None, "At " + line.stage.replace("_", " "))
         schedule.append(_schedule_item(line.stage, "mop", quantity, apply_by, note))
 
     n_total_needed = nutrient_balance["n"]["fertilizer_needed_kg_ha"]
@@ -612,8 +655,8 @@ def to_products(
                 reason = "forecast rain" if forecast_hold else "heavy rain in the last few days"
                 if apply_by is not None:
                     apply_by = apply_by + timedelta(days=rain_hold_days)
-                note = f"{note}, delayed {rain_hold_days} days for {reason}" if note else (
-                    f"Delayed {rain_hold_days} days for {reason}"
+                note = f"{note} Delayed {rain_hold_days} days for {reason}." if note else (
+                    f"Delayed {rain_hold_days} days for {reason}."
                 )
             schedule.append(_schedule_item(line.stage, "urea", quantity, apply_by, note))
 

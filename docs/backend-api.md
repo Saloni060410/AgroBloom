@@ -409,6 +409,8 @@ if unknown, before calling the ML service at all).
   }
 }
 ```
+
+`ratio` is `null` when the crop needs none of that nutrient but some is planned (an infinite ratio); the checker shows it as "Not needed".
 This is a pure check -- nothing is written to the database. Note `nutrientBalance` here IS
 camelCase (unlike a recommendation's `explanation.nutrient_balance`) -- this route builds its
 own response shape rather than passing through the ML service's raw payload.

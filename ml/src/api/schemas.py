@@ -209,7 +209,7 @@ class RecommendResponse(BaseModel):
 class AppliedVsRecommended(BaseModel):
     applied_kg_ha: float
     recommended_kg_ha: float
-    ratio: float
+    ratio: float | None  # None: the crop needs none of this nutrient but some is planned (the ratio is infinite)
 
 
 class AppliedBalance(BaseModel):
@@ -306,7 +306,7 @@ class FertilizerProduct(BaseModel):
     n_pct: float
     p2o5_pct: float
     k2o_pct: float
-    price_inr_per_kg: float
+    price_inr_per_kg: float | None = None  # None: no verified price yet; the product can still be planned and logged
     price_date: date | None = None
     bag_size_kg: float | None = None
 

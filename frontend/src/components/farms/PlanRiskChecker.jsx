@@ -211,24 +211,26 @@ export default function PlanRiskChecker({ fieldId, onBackToRecommended, fieldAre
               <div className="mt-4 grid md:grid-cols-3 gap-4">
                 {NUTRIENTS.map(([key, label]) => {
                   const n = result.nutrientBalance[key] || { appliedKgHa: 0, recommendedKgHa: 0, ratio: 1 }
-                  const pct = Math.round((n.ratio || 0) * 100)
-                  const high = pct > 120
-                  const low = pct < 80
+                  // ratio is null when the crop needs none of this nutrient but some is planned.
+                  const noNeed = n.ratio === null
+                  const pct = noNeed ? null : Math.round((n.ratio || 0) * 100)
+                  const high = noNeed || pct > 120
+                  const low = !noNeed && pct < 80
                   const tone = high ? 'bg-risk-high-text' : low ? 'bg-risk-med-text' : 'bg-primary-600'
                   return (
                     <div key={key} className="rounded-md bg-bg-base border border-border-subtle p-4 space-y-2.5">
                       <div className="flex items-center justify-between gap-2">
                         <span className="font-semibold text-sm">{label}</span>
                         <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${high ? 'bg-risk-high-bg text-risk-high-text' : low ? 'bg-risk-med-bg text-risk-med-text' : 'bg-risk-low-bg text-risk-low-text'}`}>
-                          {high ? 'Too high' : low ? 'Too low' : 'Balanced'} ({pct}%)
+                          {noNeed ? 'Not needed' : `${high ? 'Too high' : low ? 'Too low' : 'Balanced'} (${pct}%)`}
                         </span>
                       </div>
                       <dl className="text-sm space-y-1">
                         <div className="flex justify-between"><dt className="text-ink-secondary">Planned</dt><dd className="font-semibold">{fmt(n.appliedKgHa)}</dd></div>
                         <div className="flex justify-between"><dt className="text-ink-secondary">Recommended</dt><dd className="font-semibold text-primary-700">{fmt(n.recommendedKgHa)}</dd></div>
                       </dl>
-                      <div className="h-2.5 rounded-full bg-bg-muted overflow-hidden" role="img" aria-label={`${pct} percent of the recommended amount`}>
-                        <div className={`h-full rounded-full ${tone}`} style={{ width: `${Math.min(pct, 150) / 1.5}%` }} />
+                      <div className="h-2.5 rounded-full bg-bg-muted overflow-hidden" role="img" aria-label={noNeed ? 'Not needed by this crop' : `${pct} percent of the recommended amount`}>
+                        <div className={`h-full rounded-full ${tone}`} style={{ width: `${noNeed ? 100 : Math.min(pct, 150) / 1.5}%` }} />
                       </div>
                     </div>
                   )
