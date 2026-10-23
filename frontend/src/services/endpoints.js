@@ -30,6 +30,12 @@ export async function getMe() {
 }
 
 // 2. Farms Endpoints
+// Every farm with its fields and each field's newest soil test, plan and recent logs, in one request.
+export async function getOverview() {
+  if (isMock) throw new Error('The overview endpoint is not part of the mock service')
+  return api.get('/overview')
+}
+
 export async function getFarms(params = {}) {
   if (isMock) return mockService.getFarms(params)
   return api.get('/farms', { params })

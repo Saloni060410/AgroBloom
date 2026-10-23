@@ -2,23 +2,28 @@ import { useEffect, useRef, useState } from 'react'
 import * as endpoints from '../services/endpoints.js'
 import { fieldStatus, SCHEDULE_CHANGED_EVENT } from '../utils/schedule.js'
 import { useFieldStatusStore } from '../store/useFieldStatusStore.js'
+import { usePlotStore } from '../store/usePlotStore.js'
 
 /**
- * Loads soil test, plan and fertilizer logs for every field once and publishes the derived status
- * to useFieldStatusStore. Refreshes when the set of fields changes or a page reports that logs,
- * soil tests or plans changed. Mounted once, in the signed-in shell.
+ * Publishes each field's derived status (newest soil test, plan, logs, pending work) to
+ * useFieldStatusStore. The data comes from the one-request overview held by usePlotStore; a field it
+ * does not cover (just added, or the overview was unavailable) is looked up on its own. Refreshes when
+ * the set of fields changes or a page reports that logs, soil tests or plans changed. Mounted once, in the signed-in shell.
  * Returns the totals for the Schedule badge.
  */
 export function useFieldStatusSync(plots) {
   const [version, setVersion] = useState(0)
   const retries = useRef(0)
-  const key = `${plots.map((p) => p.field.id).join(',')}#${version}`
+  const snapshotVersion = usePlotStore((s) => s.snapshotVersion)
+  const key = `${plots.map((p) => p.field.id).join(',')}#${version}#${snapshotVersion}`
   const publish = useFieldStatusStore((s) => s.publish)
   const published = useFieldStatusStore((s) => s.key)
   const byField = useFieldStatusStore((s) => s.byField)
 
   useEffect(() => {
-    const bump = () => setVersion((v) => v + 1)
+    // Soil tests, logs or plans changed somewhere: take a fresh copy of everything in one request.
+    // The new snapshots change the key below, which recomputes every field's status.
+    const bump = () => usePlotStore.getState().loadPlots({ force: true, silent: true })
     window.addEventListener(SCHEDULE_CHANGED_EVENT, bump)
     return () => window.removeEventListener(SCHEDULE_CHANGED_EVENT, bump)
   }, [])
@@ -27,8 +32,18 @@ export function useFieldStatusSync(plots) {
     if (!plots.length) return undefined
     let cancelled = false
     let retryTimer = null
+    const snapshots = usePlotStore.getState().snapshots
     Promise.all(
       plots.map(async ({ field }) => {
+        // Already known from the overview: no request needed.
+        const known = snapshots[field.id]
+        if (known) {
+          return {
+            id: field.id,
+            failed: false,
+            status: fieldStatus({ field, soil: known.soil, recommendation: known.recommendation, logs: known.logs }),
+          }
+        }
         const [soilRes, recRes, logRes] = await Promise.all([
           endpoints.getSoilTests(field.id, { limit: 1 }).catch(() => null),
           endpoints.getRecommendations(field.id, { limit: 1 }).catch(() => null),
