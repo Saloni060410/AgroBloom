@@ -59,7 +59,7 @@ export default function Recommendation() {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3 no-print">
-        <h1 className="text-2xl sm:text-[2rem] font-bold text-primary-900 leading-tight">Fertilizer Recommendation &amp; Field History</h1>
+        <h1 className="text-3xl font-bold text-ink-primary leading-tight">Fertilizer Recommendation &amp; Field History</h1>
         <PlotSwitcher fieldId={fieldId} suffix="/recommendation" />
       </div>
       <div className="print-only text-lg font-semibold">{BRAND.name} &middot; {fieldName} &middot; Fertilizer summary</div>
@@ -99,7 +99,7 @@ export default function Recommendation() {
             </div>
           ) : (
             <>
-              <h2 id="ml-output" className="text-2xl font-bold text-primary-900 leading-tight">ML Model Output for {cropLabel}</h2>
+              <h2 id="ml-output" className="text-xl font-semibold text-ink-primary leading-tight">ML Model Output for {cropLabel}</h2>
               <p className="text-ink-primary mt-0.5">{fieldName}{h.field?.areaAcres ? ` · ${h.field.areaAcres} acres` : ''}</p>
               <h3 className="mt-3 text-lg font-bold text-ink-primary">Recommended Fertilizer Dosage</h3>
 
@@ -182,7 +182,7 @@ export default function Recommendation() {
         {/* Right: the field's history */}
         <section aria-labelledby="history-log" className="rounded-lg bg-bg-subtle border border-border-default shadow-md p-5 sm:p-7">
           <div className="flex flex-wrap items-start justify-between gap-3">
-            <h2 id="history-log" className="text-2xl font-bold text-ink-primary leading-tight">{fieldName} History Log</h2>
+            <h2 id="history-log" className="text-xl font-semibold text-ink-primary leading-tight">{fieldName} History Log</h2>
             <button
               type="button"
               onClick={() => window.print()}

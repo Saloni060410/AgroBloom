@@ -56,7 +56,7 @@ export default function ReportScanner({ soil, setSoil, onScanned }) {
             <ScanLine className="w-6 h-6" />
           </span>
           <div>
-            <h2 id="scan-heading" className="text-lg font-semibold text-ink-primary">Have your soil report?</h2>
+            <h2 id="scan-heading" className="text-xl font-semibold text-ink-primary">Have your soil report?</h2>
             <p className="text-sm text-ink-secondary mt-0.5 max-w-xl">
               Upload a photo, PDF or Word file of your Soil Health Card or lab sheet, or take a photo of it. The meters below fill in from what is read.
             </p>

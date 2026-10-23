@@ -221,7 +221,7 @@ export default function SoilInput() {
 
         {/* 1. Crop */}
         <section aria-labelledby="step-crop">
-          <h1 id="step-crop" className="text-lg font-bold uppercase tracking-wide text-ink-primary">1. Select your current crop:</h1>
+          <h1 id="step-crop" className="text-xl font-semibold text-ink-primary">1. Select your current crop</h1>
           <div className="mt-5 grid grid-cols-[minmax(0,1fr)] lg:grid-cols-[19rem_minmax(0,1fr)] gap-8 items-start">
             {cropId ? (
               <CropCard
@@ -257,7 +257,7 @@ export default function SoilInput() {
 
         {/* 2. Soil parameters */}
         <section aria-labelledby="step-soil">
-          <h2 id="step-soil" className="text-lg font-bold uppercase tracking-wide text-ink-primary">2. Configure soil health parameters:</h2>
+          <h2 id="step-soil" className="text-xl font-semibold text-ink-primary">2. Set the soil health values</h2>
           <p className="mt-1 text-sm text-ink-secondary flex items-start gap-1.5">
             <Info className="w-4 h-4 mt-0.5 shrink-0" aria-hidden="true" />
             {prefilledFrom
@@ -296,7 +296,7 @@ export default function SoilInput() {
 
         {/* Earlier applications */}
         <section aria-labelledby="prior-use" className="bg-white/70 border border-border-default rounded-lg p-5 sm:p-7">
-          <h2 id="prior-use" className="text-lg font-semibold text-ink-primary">Fertilizer you already applied</h2>
+          <h2 id="prior-use" className="text-xl font-semibold text-ink-primary">Fertilizer you already applied</h2>
           <p className="mt-1 text-sm text-ink-secondary max-w-2xl">
             Logged applications are credited against the new dose, so the plan does not ask you to buy what is already in the ground.
           </p>

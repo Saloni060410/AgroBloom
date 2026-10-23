@@ -175,7 +175,7 @@ export default function FieldProfile() {
       </div>
 
       <section aria-labelledby="stage" className="bg-white rounded-lg border border-border-default shadow-sm p-5 sm:p-6">
-        <h2 id="stage" className="text-lg font-semibold text-ink-primary flex items-center gap-2"><Droplets className="w-5 h-5 text-accent-water" aria-hidden="true" /> Growth stage and sowing date</h2>
+        <h2 id="stage" className="text-xl font-semibold text-ink-primary flex items-center gap-2"><Droplets className="w-5 h-5 text-accent-water" aria-hidden="true" /> Growth stage and sowing date</h2>
         <p className="text-sm text-ink-secondary mt-1">The plan is built for this stage. Move it forward as the crop grows, then run the model again.</p>
         <div className="mt-3 flex flex-wrap items-center gap-3">
           <label htmlFor="stage-select" className="sr-only">Growth stage</label>

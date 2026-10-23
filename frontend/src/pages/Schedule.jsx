@@ -182,7 +182,7 @@ export default function Schedule() {
       <div className="flex flex-wrap items-end justify-between gap-4 no-print">
         <div>
           <p className="text-sm font-semibold text-primary-700">{field ? `${field.name} · ${field.areaAcres ?? '?'} acres` : 'Loading field…'}</p>
-          <h1 className="text-3xl font-bold text-ink-primary mt-0.5">Application Schedule</h1>
+          <h1 className="text-3xl font-bold text-ink-primary leading-tight mt-0.5">Application Schedule</h1>
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <PlotSwitcher fieldId={fieldId} suffix="/schedule" />

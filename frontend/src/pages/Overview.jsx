@@ -69,7 +69,7 @@ export default function Overview() {
         <div className="flex items-center gap-4">
           <Avatar name={user?.name} size={72} className="ring-4 ring-white shadow-md" />
           <div>
-            <h1 className="text-3xl sm:text-[2.2rem] font-bold text-ink-primary leading-tight">Welcome back, {firstName(user?.name)}!</h1>
+            <h1 className="text-3xl font-bold text-ink-primary leading-tight">Welcome back, {firstName(user?.name)}!</h1>
             <p className="mt-1 text-ink-secondary">Here is where your fields stand today.</p>
           </div>
         </div>

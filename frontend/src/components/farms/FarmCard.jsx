@@ -89,8 +89,12 @@ export default function FarmCard({ group, cropNameOf, details = {}, ratings, onR
           {/* The link stretches over the whole card, so clicking anywhere opens the field. The
               buttons at the bottom sit above it (relative z-10) and keep their own actions. */}
           <Link to={`/fields/${field.id}`} className="after:absolute after:inset-0 after:rounded-lg focus-visible:after:ring-2 focus-visible:after:ring-primary-600 group-hover:underline">
-            {farm.name} <span className="text-ink-muted font-normal no-underline">&middot;</span>{' '}
-            {several ? <span className="text-ink-secondary text-base font-normal">{totalAcres ? `${Number(totalAcres.toFixed(1))} acres, ` : ''}{plots.length} crops</span> : cropName}
+            {farm.name}{' '}
+            {/* The dot stays with what follows it, so a long farm name wraps before the dot, never after it. */}
+            <span className="whitespace-nowrap">
+              <span className="text-ink-muted font-normal no-underline">&middot;</span>{' '}
+              {several ? <span className="text-ink-secondary text-base font-normal">{totalAcres ? `${Number(totalAcres.toFixed(1))} acres, ` : ''}{plots.length} crops</span> : cropName}
+            </span>
           </Link>
         </h2>
 

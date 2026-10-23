@@ -54,7 +54,7 @@ export default function History() {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3 no-print">
-        <h1 className="text-2xl sm:text-[2rem] font-bold text-primary-900 leading-tight">{fieldName} &middot; Field History</h1>
+        <h1 className="text-3xl font-bold text-ink-primary leading-tight">{fieldName} &middot; Field History</h1>
         <div className="flex flex-wrap items-center gap-3">
           <PlotSwitcher fieldId={fieldId} suffix="/history" />
           <button type="button" onClick={() => window.print()} className="inline-flex items-center gap-2 min-h-[46px] px-5 rounded-full bg-bg-muted hover:bg-border-default font-semibold text-sm cursor-pointer transition-colors">
@@ -97,7 +97,7 @@ export default function History() {
 
       <section aria-labelledby="full-log" className="rounded-lg bg-bg-subtle border border-border-default shadow-md p-5 sm:p-7">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 id="full-log" className="text-xl font-bold text-ink-primary">Everything recorded for {fieldName}</h2>
+          <h2 id="full-log" className="text-xl font-semibold text-ink-primary">Everything recorded for {fieldName}</h2>
           <div className="no-print"><FilterSelect value={filter} onChange={setFilter} /></div>
         </div>
         <div className="mt-4">

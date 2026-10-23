@@ -28,7 +28,7 @@ export default function RiskCheck() {
         <PlotSwitcher fieldId={fieldId} suffix="/risk-check" />
       </div>
       <div>
-        <h1 className="text-3xl font-bold text-ink-primary">Risk check</h1>
+        <h1 className="text-3xl font-bold text-ink-primary leading-tight">Risk check</h1>
         <p className="mt-1 text-ink-secondary">
           Type in what you were planning to apply{field ? ` on ${field.name}` : ''} and see whether it is too much, too little, or about right for the soil.
         </p>

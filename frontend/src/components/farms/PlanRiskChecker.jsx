@@ -139,7 +139,7 @@ export default function PlanRiskChecker({ fieldId, onBackToRecommended, fieldAre
       )}
 
       <section aria-labelledby={`${uid}-planned`} className="bg-white rounded-lg border border-border-default shadow-sm p-5 sm:p-6 space-y-4">
-        <h2 id={`${uid}-planned`} className="text-lg font-semibold text-ink-primary">What you plan to apply</h2>
+        <h2 id={`${uid}-planned`} className="text-xl font-semibold text-ink-primary">What you plan to apply</h2>
         <div className="space-y-3">
           {rows.map((row, idx) => {
             const fert = fertilizers.find((f) => f.id === row.fertilizerType)
@@ -206,7 +206,7 @@ export default function PlanRiskChecker({ fieldId, onBackToRecommended, fieldAre
 
           {result.nutrientBalance && (
             <section aria-labelledby={`${uid}-bal`} className="bg-white rounded-lg border border-border-default shadow-sm p-5 sm:p-6">
-              <h2 id={`${uid}-bal`} className="text-lg font-semibold text-ink-primary">Planned against recommended, per nutrient</h2>
+              <h2 id={`${uid}-bal`} className="text-xl font-semibold text-ink-primary">Planned against recommended, per nutrient</h2>
               <p className="text-xs text-ink-muted mt-0.5">100% means your plan matches what the model recommends. Amounts are kg per hectare.</p>
               <div className="mt-4 grid md:grid-cols-3 gap-4">
                 {NUTRIENTS.map(([key, label]) => {
