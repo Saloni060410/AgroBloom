@@ -9,6 +9,8 @@ import { useFieldStatusStore } from '../store/useFieldStatusStore.js'
 import { DEFAULT_RATINGS, ratingsFromReference } from '../utils/soilHealth.js'
 import { formatDate, titleCase } from '../utils/format.js'
 import { notifyScheduleChanged, rememberCreditedLogs } from '../utils/schedule.js'
+import { retestWarning } from '../utils/retestWarning.js'
+import Modal from '../components/ui/Modal.jsx'
 import CropCard, { CropTile } from '../components/soil/CropCard.jsx'
 import ParamDial from '../components/soil/ParamDial.jsx'
 import ReportScanner from '../components/soil/ReportScanner.jsx'
@@ -56,6 +58,7 @@ export default function SoilInput() {
   const [updatingPlan, setUpdatingPlan] = useState(false)
 
   const [running, setRunning] = useState(false)
+  const [retestAsk, setRetestAsk] = useState(null)
   const [runError, setRunError] = useState(null)
 
   useEffect(() => {
@@ -132,6 +135,15 @@ export default function SoilInput() {
   const activeCrop = crops.find((c) => c.id === cropId)
   const cropOptions = crops.map((c) => c.id)
   const allValid = Object.values(soil).every((v) => Number.isFinite(v))
+
+  // A new test soon after the last one rarely shows anything new, and testing and applying again and again leads to
+  // over-application, so ask first.
+  const requestRun = () => {
+    if (!allValid || running) return
+    const warning = retestWarning({ lastTestedOn: prefilledFrom, logs })
+    if (warning) setRetestAsk(warning)
+    else runModel()
+  }
 
   const runModel = async () => {
     if (!allValid || running) return
@@ -304,7 +316,7 @@ export default function SoilInput() {
           )}
           <button
             type="button"
-            onClick={runModel}
+            onClick={requestRun}
             disabled={running || !allValid || !cropId}
             className="inline-flex items-center gap-3 min-h-[60px] px-10 rounded-full bg-primary-700 hover:bg-primary-900 disabled:opacity-60 text-white text-lg font-semibold uppercase tracking-wide shadow-[0_0_0_4px_#f3d9a3,0_10px_26px_-6px_rgba(88,122,52,0.6)] transition-all cursor-pointer active:scale-[0.98]"
           >
@@ -368,6 +380,41 @@ export default function SoilInput() {
           )}
         </section>
       </div>
+      <Modal
+        isOpen={Boolean(retestAsk)}
+        onClose={() => setRetestAsk(null)}
+        title="You tested this field recently"
+        description="Testing and applying again and again can lead to over-application."
+      >
+        {retestAsk && (
+          <div className="space-y-4">
+            <p className="text-ink-secondary">
+              The last soil test for this field was {retestAsk.daysAgo === 0 ? 'today' : `${retestAsk.daysAgo} day${retestAsk.daysAgo === 1 ? '' : 's'} ago`}
+              {retestAsk.applicationsSince > 0
+                ? `, and you have logged ${retestAsk.applicationsSince} application${retestAsk.applicationsSince === 1 ? '' : 's'} since.`
+                : '.'}{' '}
+              Soil values change slowly, so a new test this soon rarely shows anything new, and a plan made from it can ask for more
+              fertilizer than the crop needs. What you already applied is credited, but only partly, because not all of it reaches the crop.
+            </p>
+            <p className="text-sm text-ink-secondary">Run the model again only if the new report has different values.</p>
+            <div className="flex flex-wrap gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setRetestAsk(null)
+                  runModel()
+                }}
+                className="min-h-[46px] px-6 rounded-full bg-terracotta-600 hover:bg-terracotta-700 text-white font-medium cursor-pointer"
+              >
+                Run the model anyway
+              </button>
+              <button type="button" onClick={() => setRetestAsk(null)} className="min-h-[46px] px-5 rounded-full text-ink-secondary hover:bg-bg-subtle font-medium cursor-pointer">
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   )
 }
