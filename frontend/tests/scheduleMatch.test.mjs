@@ -68,3 +68,23 @@ test('with no record for the plan, only a log applied on a later day than the pl
 test('no plan, nothing to credit', () => {
   assert.deepEqual(logsNeedingCredit(null, [log('a', 'urea', 20)], {}), [])
 })
+
+test('a log the plan was made with never completes one of its doses (a retest on the day of the doses)', () => {
+  const second = { id: 'p2', createdAt: '2026-10-23T18:00:00Z', schedule: [
+    { stage: 'sowing', fertilizer_type: 'dap', quantity_kg_per_acre: 43.5, apply_by: '2026-10-11' },
+    { stage: 'crown_root_initiation', fertilizer_type: 'urea', quantity_kg_per_acre: 22, apply_by: '2026-11-08' },
+  ] }
+  const logs = [log('d', 'dap', 54.4), log('u', 'urea', 46.7)]
+  // without the record, same-day logs would cover both new doses
+  assert.deepEqual(matchLogsToLines(second, logs, {}, {}).map(Boolean), [true, true])
+  // with it, both are pending and both logs are listed as applied earlier
+  const credited = { p2: ['d', 'u'] }
+  const matches = matchLogsToLines(second, logs, {}, credited)
+  assert.deepEqual(matches, [null, null])
+  assert.deepEqual(unmatchedLogs(second, logs, matches).map((l) => l.id).sort(), ['d', 'u'])
+})
+
+test('a log made after the plan still completes a dose of it', () => {
+  const plan = { id: 'p3', createdAt: '2026-10-23T18:00:00Z', schedule: [{ stage: 'x', fertilizer_type: 'urea', quantity_kg_per_acre: 40, apply_by: null }] }
+  assert.ok(matchLogsToLines(plan, [log('new', 'urea', 40)], {}, { p3: ['old'] })[0])
+})

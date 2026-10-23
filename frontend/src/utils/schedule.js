@@ -44,11 +44,15 @@ export function saveLineHint(logId, key) {
  */
 export const COMPLETES_DOSE_FRACTION = 0.9
 
-export function matchLogsToLines(recommendation, logs, hints = loadLineHints()) {
+export function matchLogsToLines(recommendation, logs, hints = loadLineHints(), credited = loadCredited()) {
   const lines = recommendation?.schedule || []
   if (!lines.length) return []
   const since = new Date(new Date(recommendation.createdAt).toISOString().slice(0, 10))
+  // A log the plan was made with is already credited in its doses. It must not also count as one of them: with
+  // a new soil test taken the same day as the doses were logged, every new dose would otherwise show as applied.
+  const madeWith = new Set(credited[recommendation.id] || [])
   const pool = (logs || [])
+    .filter((l) => !madeWith.has(l.id))
     .filter((l) => new Date(l.appliedOn) >= since)
     .sort((a, b) => new Date(a.appliedOn) - new Date(b.appliedOn))
   const result = lines.map(() => null)
