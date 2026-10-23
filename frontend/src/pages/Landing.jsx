@@ -10,6 +10,8 @@ import CropArt, { CROP_THEME } from '../components/illustrations/CropArt.jsx'
 import { DialGauge } from '../components/ui/Gauges.jsx'
 import { useActiveField } from '../hooks/useActiveField.js'
 import { useUserStore } from '../store/useUserStore.js'
+import { warmUpServer } from '../services/warmUp.js'
+import SlowLoadNotice from '../components/ui/SlowLoadNotice.jsx'
 import { DEMO_ACCOUNT } from '../utils/demoAccount.js'
 import { BRAND } from '../components/brand/brand.js'
 
@@ -71,6 +73,10 @@ export default function Landing() {
   const [intro, setIntro] = useState(() => !introPlayed && !prefersReducedMotion())
   const [revealed, setRevealed] = useState(!intro)
   const mainRef = useRef(null)
+
+  useEffect(() => {
+    warmUpServer()
+  }, [])
 
   // While the scene covers the page, keep the page out of the tab order and away from screen readers.
   useEffect(() => {
@@ -150,6 +156,7 @@ export default function Landing() {
               <p className="mt-4 text-sm text-ink-muted max-w-md">
                 The demo opens sample farms so you can look around. Sign in to log in, or sign up as a new customer, and plan your own fields.
               </p>
+              <div className="mt-4 max-w-md"><SlowLoadNotice active={demoState.loading} afterMs={3000} /></div>
               {demoState.error && (
                 <p role="alert" className="mt-4 max-w-md p-3 rounded-md border border-risk-high-border bg-risk-high-bg text-risk-high-text text-sm flex items-start gap-2">
                   <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" aria-hidden="true" />
