@@ -155,14 +155,25 @@ variety for such a crop, the plan carries a note listing the varieties that have
 | `name_en` / `name_hi` | Display names | string |
 | `order` | 1-indexed sequence of the stage within the crop's lifecycle | integer |
 | `das_start` / `das_end` | Days after sowing marking the start/end of the stage | integer days, or `TODO(data)` |
+| `counted_from` | What `das_start`/`das_end` count from: `sowing` (the default) or `transplanting` | `sowing` / `transplanting` |
+| `timing_hint` | PAU's instruction for applying fertilizer at this stage, shown as the line's `timing_note` | sentence, or empty |
+| `timing_source` | Where the hint comes from | free text |
 | `source` | Citation, including page number where available | free text |
 
-**Rice is transplanted, not direct-sown.** Its `das_start`/`das_end` values for stages from
-`first_n_split` onward are **Days After Transplanting (DAT)** per PAU convention, not days
-after nursery sowing — the two diverge because nursery duration (25–45+ days) varies by
-season and variety. This is flagged in each affected row's `source` cell. Anything consuming
-these rice stage windows (e.g. `rain_hold` logic, split-schedule timing) must treat them as
-DAT, not DAS, for rice specifically.
+**Rice is transplanted, not direct-sown.** The rice stages from `first_n_split` onward are measured in
+**days after transplanting (DAT)** per PAU, not days after nursery sowing, because the nursery lasts 25 to
+30 days. Those rows have `counted_from = transplanting`, and the engine adds the transplanting day (the
+`transplanting` stage's window) before dating them (`src/engine/stage_timing.py`). Dates shown to the
+farmer use the early end of that window, so a best-before is never later than it should be; the stage the
+crop has surely reached uses the late end, so it is never advanced early. `first_n_split` is 1 to 7 DAT
+("within 7 days of transplanting"), `active_tillering` 21 DAT, `panicle_initiation` 35 to 42 DAT.
+
+**What the schedule's date means.** `apply_by` is the best-before day: the last day of the stage's window for
+a nitrogen top-dressing, the first day for phosphorus and potash (which go on before or at the stage). The
+line's `timing_note` is the stage's `timing_hint` plus "Best between X and Y" when the stage has a window,
+and a rain delay when one applies. A stage with no sourced days (wheat's first irrigation, maize's
+knee-high stage, the cotton and sugarcane top-dressings) has the instruction but no date: PAU gives no day
+count, and none is invented.
 
 ### reference_doses.csv
 
@@ -321,6 +332,7 @@ only single superphosphate), and the engine uses the first one listed.
 | `crop_id` | Foreign key into crops.csv; one row per crop | snake_case id |
 | `primary_product` | The product the plan uses for phosphorus | `product_id` in fertilizer_products.csv |
 | `alternative_products` | Other products that can supply the same phosphorus, shown in a note with their quantities | `product_id`s joined with `\|` |
+| `alternative_timing` | What PAU says about timing when an alternative is used, e.g. wheat: with superphosphate, 20 kg urea per acre at sowing | `product=text`, joined with `\|`, or empty |
 | `source` | The PAU table the choice comes from | free text |
 | `notes` | Matching assumptions, for example nitrophosphate taken as `np_20_20_0` | free text |
 

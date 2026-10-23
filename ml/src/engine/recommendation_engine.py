@@ -409,7 +409,8 @@ def _product_notes(schedule: list[dict], request: RecommendRequest, tables, plan
             urea_text = (
                 f", with about {abs(urea):g} kg/acre {'more' if urea > 0 else 'less'} urea" if urea is not None and abs(urea) >= 1 else ""
             )
-            parts.append(f"{option['name']}: {option['quantity_kg_per_acre']:g} kg/acre{urea_text}")
+            timing_text = f", {option['timing']}" if option.get("timing") else ""
+            parts.append(f"{option['name']}: {option['quantity_kg_per_acre']:g} kg/acre{urea_text}{timing_text}")
         sulphur = " Single superphosphate also supplies sulphur." if "ssp" in {o["product_id"] for o in alternatives["options"]} | {alternatives["primary_id"]} else ""
         notes.append(
             f"{alternatives['primary_name']} is the phosphorus fertilizer in PAU's table for {crop}. The same "
