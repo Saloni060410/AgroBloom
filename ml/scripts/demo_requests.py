@@ -71,7 +71,7 @@ def main() -> None:
     parser.add_argument("--risk-score", action="store_true", help="print the scenario-1 over-application /risk-score payload instead of /recommend requests")
     args = parser.parse_args()
 
-    today = args.today or date.today()
+    today = args.today or date.today()  # noqa: DTZ011 -- CLI caller can always pin --today; the default only serves someone running this the same day as the demo
     fixture = json.loads(FIXTURE_PATH.read_text(encoding="utf-8"))
     scenarios = fixture["scenarios"]
     if args.scenario:

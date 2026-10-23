@@ -301,7 +301,7 @@ def _data_notes(rule_trace: list[dict], weather_source: str) -> list[str]:
 
 def recommend(request: RecommendRequest, engine: Engine, today: date | None = None) -> RecommendResponse:
     engine._require_tables()
-    today = today or date.today()
+    today = today or date.today()  # noqa: DTZ011 -- caller (the endpoint) always passes today explicitly in tests; the default only serves real traffic
 
     validate_soil(request.soil.model_dump())
     payload = request.model_dump(mode="json")
@@ -415,7 +415,7 @@ def recommend(request: RecommendRequest, engine: Engine, today: date | None = No
 
 def score_planned_risk(request: RiskScoreRequest, engine: Engine, today: date | None = None) -> RiskScoreResponse:
     engine._require_tables()
-    today = today or date.today()
+    today = today or date.today()  # noqa: DTZ011 -- see recommend()'s identical note
 
     validate_soil(request.soil.model_dump())
     payload = request.model_dump(mode="json")
