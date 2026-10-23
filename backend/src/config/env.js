@@ -23,6 +23,10 @@ const schema = z.object({
   ML_TIMEOUT_MS: z.coerce.number().int().positive().default(5000),
   // Waits (ms, comma separated) between retries of a reference-data request that failed quickly: a
   // refused or reset connection, or a 5xx, while the ML service is starting after a deploy or a sleep.
+  // How long a request for the crop, soil-rating or fertilizer list waits for the ML service when the API
+  // has no cached copy, before answering from the bundled snapshot (src/data/reference.snapshot.json).
+  // The request to the ML service carries on in the background and fills the cache when it answers.
+  ML_REFERENCE_WAIT_MS: z.coerce.number().int().min(0).default(4000),
   ML_RETRY_DELAYS_MS: z
     .string()
     .default('2000,5000,10000')
