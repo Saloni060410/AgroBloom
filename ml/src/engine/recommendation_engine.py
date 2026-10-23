@@ -66,7 +66,7 @@ from src.engine.npk_calculator import (
     to_products,
 )
 from src.models.imitation_features import FEATURE_SET as IMITATION_FEATURE_SET
-from src.models.imitation_features import build_imitation_features
+from src.models.imitation_features import build_imitation_features, prior_supply
 
 try:  # R10 (explain, ranking rule_trace items with XGBoost pred_contribs) isn't built yet.
     from src.evaluation.explainability import explain as _richa_explain
@@ -235,7 +235,18 @@ def _primary_product(schedule: list[dict]) -> tuple[str, float]:
     return product, round(totals[product], 3)
 
 
-def _classifier_opinion(engine: Engine, features, request: RecommendRequest, stage_id: str) -> list[dict] | None:
+def plan_label(schedule: list[dict]) -> str:
+    """Every product in the plan, as one label ("dap+urea"), or "none" for an empty plan. This is what the
+    rule-imitation classifier predicts: not just the largest product, so a plan that adds potash or uses
+    superphosphate for phosphorus is told apart from one that does not."""
+    return "+".join(sorted({item["fertilizer_type"] for item in schedule})) or "none"
+
+
+def _readable_label(label: str) -> str:
+    return "no fertilizer" if label == "none" else " + ".join(label.split("+"))
+
+
+def _classifier_opinion(engine: Engine, features, request: RecommendRequest, stage_id: str, today: date) -> list[dict] | None:
     """Top-3 classifier probabilities for explain(), and for the disagreement check in step
     (c). None if no classifier is registered -- the calculator's choice stands either way.
     Each model is fed the inputs it was trained on: the original classifier gets `features`; the
@@ -247,8 +258,12 @@ def _classifier_opinion(engine: Engine, features, request: RecommendRequest, sta
         inputs = features
     elif engine.model.feature_set == IMITATION_FEATURE_SET:
         soil = request.soil
+        supplied = prior_supply(
+            [usage.model_dump(mode="json") for usage in request.previous_fertilizer_usage], engine.tables, today,
+            engine.rules["credit_window_days"], _pk_window_days(engine, request.crop_type) or engine.rules["credit_window_days"],
+        )
         inputs = build_imitation_features(
-            [{"crop_id": request.crop_type, "irrigation": request.irrigation, "stage_id": stage_id, "n": soil.n, "p": soil.p, "k": soil.k}],
+            [{"crop_id": request.crop_type, "irrigation": request.irrigation, "stage_id": stage_id, "n": soil.n, "p": soil.p, "k": soil.k, **supplied}],
             engine.tables,
         )
     else:
@@ -373,8 +388,8 @@ def _data_notes(rule_trace: list[dict], weather_source: str) -> list[str]:
             notes.append(f"Previous fertilizer use listed an unrecognised product ({products}), ignored.")
         elif entry["rule_id"] == "classifier_disagreement":
             notes.append(
-                f"The product classifier's top guess ({entry['value']}) differed from the "
-                f"rule-based plan; the rule-based plan was kept."
+                f"The product classifier's top guess ({_readable_label(entry['value'])}) differed from the "
+                f"rule-based plan ({_readable_label(entry['params']['balance_choice'])}); the rule-based plan was kept."
             )
     if weather_source != "live":
         notes.append(f"Weather is a {weather_source.replace('_', ' ')} value, not a live forecast.")
@@ -455,8 +470,10 @@ def recommend(request: RecommendRequest, engine: Engine, today: date | None = No
     # an unpriced-but-known product (e.g. MOP, see cost.py) is still scheduled here.
 
     primary_product, primary_quantity = _primary_product(schedule)
-    classifier_opinion = _classifier_opinion(engine, features, request, stage_used)
-    if classifier_opinion and classifier_opinion[0]["product"] != primary_product:
+    classifier_opinion = _classifier_opinion(engine, features, request, stage_used, today)
+    # The original classifier names one product; the rule-imitation one names the whole set in the plan.
+    plan_choice = plan_label(schedule) if engine.model is not None and engine.model.feature_set == IMITATION_FEATURE_SET else primary_product
+    if classifier_opinion and classifier_opinion[0]["product"] != plan_choice:
         rule_trace.append(
             {
                 "rule_id": "classifier_disagreement",
@@ -464,7 +481,7 @@ def recommend(request: RecommendRequest, engine: Engine, today: date | None = No
                 "value": classifier_opinion[0]["product"],
                 "threshold": None,
                 "effect": "balance kept, classifier opinion recorded",
-                "params": {"classifier_top3": classifier_opinion, "balance_choice": primary_product},
+                "params": {"classifier_top3": classifier_opinion, "balance_choice": plan_choice},
             }
         )
 
