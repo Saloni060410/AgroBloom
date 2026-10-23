@@ -2,7 +2,7 @@
 
 A small classifier taught to name the same set of fertilizer products as the rule engine. It replaces the
 original `fertilizer-classifier-0.1.1` (see `MODEL_CARD.md`) as the active model. Every number below comes
-from the registry entry for this model in `src/models/model_registry/registry.json` (version 0.1.3) and its
+from the registry entry for this model in `src/models/model_registry/registry.json` (version 0.1.4) and its
 run record in `models_artifacts/runs/<run_id>/metrics.json`, except the "end-to-end" figures, which were
 measured separately and are described where they appear.
 
