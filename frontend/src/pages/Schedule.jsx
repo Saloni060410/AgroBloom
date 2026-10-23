@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { Printer, CloudRain, Check, FileText, FlaskConical, AlertCircle, ChevronDown } from 'lucide-react'
+import { Printer, CloudRain, Check, FileText, FlaskConical, AlertCircle } from 'lucide-react'
 import useDocumentTitle from '../hooks/useDocumentTitle.js'
 import * as endpoints from '../services/endpoints.js'
 import { useUserStore } from '../store/useUserStore.js'
@@ -46,7 +46,6 @@ export default function Schedule() {
   const [queue, setQueue] = useState([]) // marked done, waiting out the undo window
   const [confirm, setConfirm] = useState(null) // { key, qty, date, error } for the step being confirmed
   const [markError, setMarkError] = useState(null)
-  const [showDone, setShowDone] = useState(false)
   const pending = useRef(new Map()) // id -> { timer, item }
 
   useEffect(() => {
@@ -168,7 +167,6 @@ export default function Schedule() {
   })
   const openSteps = steps.filter((s) => !s.applied)
   const doneSteps = steps.filter((s) => s.applied)
-  const doneExpanded = showDone || (openSteps.length === 0 && doneSteps.length > 0)
   const toasts = queue
     .filter((q) => q.fieldId === fieldId)
     .map((q) => ({ id: q.id, message: `Logged ${q.label} on ${formatDate(q.date)}. Saving in a moment.`, onUndo: () => undo(q.id) }))
@@ -242,11 +240,44 @@ export default function Schedule() {
             </p>
           )}
 
-          {openSteps.length > 0 && (
+          {steps.length > 0 && (
             <ol className="relative space-y-4">
               <span className="absolute top-6 bottom-6 left-[1.55rem] w-0.5 bg-border-strong/50 no-print" aria-hidden="true" />
-              {openSteps.map((s) => {
+              {steps.map((s) => {
                 const confirming = confirm?.key === s.key
+                // A dose that is logged stays where it is in the plan, marked applied, so it is clear it was saved.
+                if (s.applied) {
+                  const quantity = s.queued ? s.queued.qty : s.log.quantityKgPerAcre
+                  return (
+                    <li key={s.key} className="relative grid grid-cols-[3.2rem_1fr] gap-x-3">
+                      <span className="relative z-10 mt-5 w-11 h-11 rounded-full inline-flex items-center justify-center bg-primary-600 text-white ring-4 ring-bg-base" aria-hidden="true">
+                        <Check className="w-5 h-5" />
+                      </span>
+                      <div className="rounded-lg border border-risk-low-border bg-risk-low-bg/50 p-5">
+                        <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
+                          <div className="flex gap-4 min-w-0">
+                            <ProductIcon type={s.line.fertilizer_type} className="w-14 h-16 shrink-0" />
+                            <div className="min-w-0">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <h2 className="text-lg font-semibold text-ink-primary">{titleCase(s.line.stage)}</h2>
+                                <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full border ${TONE.applied}`}>Applied</span>
+                              </div>
+                              <p className="mt-1 font-semibold text-ink-primary">{roundQty(quantity)} kg/acre {s.product}</p>
+                              <p className="text-sm text-ink-secondary">
+                                {s.queued ? 'Saving…' : `Logged ${formatDate(s.log.appliedOn)}`}
+                                {' · '}planned {roundQty(s.line.quantity_kg_per_acre)} kg/acre
+                                {s.line.apply_by ? `, best before ${formatDate(s.line.apply_by)}` : ''}
+                              </p>
+                            </div>
+                          </div>
+                          {s.queued && (
+                            <button type="button" onClick={() => undo(s.queued.id)} className="no-print font-semibold text-terracotta-600 hover:underline cursor-pointer min-h-touch">Undo</button>
+                          )}
+                        </div>
+                      </div>
+                    </li>
+                  )
+                }
                 return (
                   <li key={s.key} className="relative grid grid-cols-[3.2rem_1fr] gap-x-3">
                     <span
@@ -325,52 +356,6 @@ export default function Schedule() {
                 )
               })}
             </ol>
-          )}
-
-          {doneSteps.length > 0 && (
-            <section aria-labelledby="done-heading" className="rounded-lg border border-border-default bg-white/70">
-              <h2 id="done-heading">
-                <button
-                  type="button"
-                  onClick={() => setShowDone((v) => !v)}
-                  aria-expanded={doneExpanded}
-                  className="w-full flex items-center justify-between gap-3 px-5 py-4 text-left cursor-pointer min-h-[52px]"
-                >
-                  <span className="flex items-center gap-2.5 font-semibold text-ink-primary">
-                    <span className="w-7 h-7 rounded-full bg-primary-600 text-white inline-flex items-center justify-center" aria-hidden="true"><Check className="w-4 h-4" /></span>
-                    Done
-                    <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-risk-low-bg text-risk-low-text border border-risk-low-border">{doneSteps.length}</span>
-                  </span>
-                  <ChevronDown className={`w-5 h-5 text-ink-muted transition-transform ${doneExpanded ? 'rotate-180' : ''}`} aria-hidden="true" />
-                </button>
-              </h2>
-              {doneExpanded && (
-                <ul className="divide-y divide-border-subtle border-t border-border-subtle">
-                  {doneSteps.map((s) => (
-                    <li key={s.key} className="px-5 py-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-sm">
-                      <span className="flex items-center gap-3 min-w-0">
-                        <span className="text-ink-muted font-semibold tabular-nums">{String(s.index + 1).padStart(2, '0')}</span>
-                        <ProductIcon type={s.line.fertilizer_type} className="w-6 h-7 shrink-0" />
-                        <span className="min-w-0">
-                          <span className="font-medium text-ink-primary">{titleCase(s.line.stage)}</span>
-                          <span className="text-ink-secondary"> &middot; {s.product}</span>
-                        </span>
-                      </span>
-                      <span className="flex items-center gap-3 text-ink-secondary">
-                        {s.queued ? (
-                          <>
-                            <span>{roundQty(s.queued.qty)} kg/acre &middot; saving&hellip;</span>
-                            <button type="button" onClick={() => undo(s.queued.id)} className="no-print font-semibold text-terracotta-600 hover:underline cursor-pointer min-h-touch">Undo</button>
-                          </>
-                        ) : (
-                          <span>{roundQty(s.log.quantityKgPerAcre)} kg/acre &middot; logged {formatDate(s.log.appliedOn)}</span>
-                        )}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </section>
           )}
 
           {/* Retailer slip, print-friendly */}
