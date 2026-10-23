@@ -9,6 +9,7 @@ import { useSoilPromptStore } from '../store/useSoilPromptStore.js'
 import AddFarmModal from '../components/farms/AddFarmModal.jsx'
 import AddCropModal from '../components/farms/AddCropModal.jsx'
 import Modal from '../components/ui/Modal.jsx'
+import SlowLoadNotice from '../components/ui/SlowLoadNotice.jsx'
 import { AddFarmArt } from '../components/illustrations/SmallArt.jsx'
 import { BRAND } from '../components/brand/brand.js'
 
@@ -84,13 +85,15 @@ export default function Dashboard() {
     <div className="space-y-8">
       <section aria-labelledby="active-farmlands">
         <div className="flex flex-wrap items-center gap-3 mb-5">
-          <h2 id="active-farmlands" className="text-2xl font-semibold text-ink-primary">Active Farmlands</h2>
+          <h1 id="active-farmlands" className="text-3xl font-bold text-ink-primary leading-tight">Active Farmlands</h1>
           {pendingFarms > 0 && (
             <span className="inline-flex items-center rounded-full bg-risk-high-bg text-risk-high-text border border-risk-high-border text-sm font-semibold px-3 py-1">
               {pendingFarms} of {groups.length} {pendingFarms === 1 ? 'farm has' : 'farms have'} pending work
             </span>
           )}
         </div>
+
+        <SlowLoadNotice active={loading} />
 
         {status === 'error' && (
           <div role="alert" className="mb-5 p-4 rounded-md bg-risk-high-bg border border-risk-high-border text-risk-high-text text-sm flex flex-wrap items-center justify-between gap-3">
