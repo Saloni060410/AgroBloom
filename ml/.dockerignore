@@ -4,5 +4,6 @@ __pycache__
 .env.*
 !.env.example
 data/raw
+!data/raw/fertilizer_prediction_synthetic.csv
 data/processed
 notebooks

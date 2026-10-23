@@ -53,7 +53,7 @@ docker compose exec backend npm run db:seed:demo   # three demo farms with plans
 | ML service | http://localhost:8001 (`/health`, `/docs`) |
 | Postgres | localhost:5432 (user, password and database all `khetgpt`) |
 
-The backend runs its database migrations every time it starts. The ML service reports `degraded` until a model has been trained, and still answers every request from its rule-based calculator.
+The backend runs its database migrations every time it starts. The ML image trains the product classifier while it is built, so `/health` reports `ok`. Without a model (a service started from source before `python -m src.models.train`) it reports `degraded` and still answers every request from its rule-based calculator.
 
 ### Without Docker
 

@@ -9,12 +9,21 @@ RUN pip install --no-cache-dir -r requirements.txt
 # reference_doses.csv, fertilizer_products.csv, agronomy_rules.yaml, etc.) are read at
 # runtime by src.data_pipeline/src.engine on every request -- without them /recommend and
 # /risk-score fail with a 503 (ReferenceDataError) on every call, and /health never shows
-# "ok" degraded for the right reason. models_artifacts/ is NOT copied: it's gitignored,
-# produced locally by `python -m src.models.train` (see ml/AGENTS.md's Commands), and
-# supplied to the running container via a bind mount instead (docker-compose.yml).
+# "ok" degraded for the right reason. models_artifacts/ is NOT copied from the host: it's gitignored. docker-compose
+# bind-mounts a locally trained one over the top; any other build trains its own below.
 COPY src ./src
 COPY configs ./configs
 COPY data/external ./data/external
+
+# The product classifier. models_artifacts/ is git-ignored (the team rule is never to commit model
+# files), so the image trains it from the synthetic dataset that IS in the repo: build the training
+# table, then train. Same seed and config as a local run (configs/*.yaml, seed 42), so it is the
+# same recipe the local model comes from. Takes about a minute. Without it the service still answers
+# every request from the rule-based engine and reports "degraded" on /health.
+COPY data/raw/fertilizer_prediction_synthetic.csv ./data/raw/fertilizer_prediction_synthetic.csv
+RUN python -m src.data_pipeline.build_dataset --config configs/data.yaml \
+ && python -m src.models.train --config configs/train.yaml \
+ && rm -rf data/raw data/processed
 
 # Non-root: nothing in this service needs root, and a dependency RCE shouldn't get it either.
 RUN useradd --create-home --uid 1000 appuser && chown -R appuser:appuser /app
