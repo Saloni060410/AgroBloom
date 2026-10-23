@@ -2,7 +2,7 @@ import axios from 'axios'
 import { z } from 'zod'
 import { env } from '../config/env.js'
 
-const client = axios.create({ baseURL: env.ML_SERVICE_URL, timeout: 5000 })
+const client = axios.create({ baseURL: env.ML_SERVICE_URL, timeout: env.ML_TIMEOUT_MS })
 
 export class MlUnavailableError extends Error {
   constructor(message = 'Recommendation service is unavailable, try again') {

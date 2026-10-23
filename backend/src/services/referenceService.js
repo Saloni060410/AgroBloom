@@ -10,7 +10,7 @@ const DEV_FALLBACK_PATH = path.join(__dirname, '../../config/reference.dev.json'
 const FRESH_MS = 60 * 60_000       // 1 hour
 const STALE_MS = 24 * 60 * 60_000  // 24 hours
 
-const client = axios.create({ baseURL: env.ML_SERVICE_URL, timeout: 5000 })
+const client = axios.create({ baseURL: env.ML_SERVICE_URL, timeout: env.ML_TIMEOUT_MS })
 const cache = new Map() // key -> { data, fetchedAt }
 
 export class ReferenceUnavailableError extends Error {

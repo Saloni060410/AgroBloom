@@ -57,9 +57,10 @@ The email and password above are what the landing page's **Demo dashboard** butt
 | backend | `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET` | Different random 32-byte values (`openssl rand -hex 32`) |
 | backend | `CORS_ORIGIN` | The website's origin, or a comma-separated list |
 | backend | `ML_SERVICE_URL` | Where the ML service answers |
+| backend | `ML_TIMEOUT_MS` | How long to wait for it (default 5000; the blueprint uses 90000) |
 | backend | `WEATHER_SERVICE_URL`, `GEOCODE_SERVICE_URL` | Open-Meteo defaults work, no key |
 | ml | `PORT`, `PREDICT_MODE`, `DATA_EXTERNAL_DIR`, `MODEL_ARTIFACT_DIR` | The blueprint sets them |
-| website (build time) | `VITE_API_BASE_URL`, `VITE_USE_MOCK=false` | Vite bakes these into the build |
+| website (build time) | `VITE_API_BASE_URL`, `VITE_USE_MOCK=false`, `VITE_API_TIMEOUT_MS` | Vite bakes these into the build |
 
 Never commit a `.env`. The values above go into the host's dashboard.
 
@@ -67,7 +68,7 @@ Never commit a `.env`. The values above go into the host's dashboard.
 
 - **The ML service runs without the trained model.** `ml/models_artifacts/` is git-ignored, so a deployed ML service reports `degraded` on `/health`. That is fine: the rule-based dose engine answers every request, and the classifier's guess is only a side note. To ship the classifier, run `python -m src.models.train` and bake or mount `models_artifacts/` into the ML image.
 - **The ML service is not password protected.** It is stateless and only does arithmetic on the request, but it is reachable by anyone who has its URL. Put it on a private network if your host offers one.
-- **Free plans sleep.** Render's free web services stop after a period of no traffic, so the first request after a pause takes about a minute, and a free Postgres database is time-limited. Check the host's current terms before relying on it for a demo day, and warm the services first.
+- **Free plans sleep.** Render's free web services stop after about 15 minutes without traffic. The first request after a pause wakes the API (about a minute), and the first plan after that wakes the ML service (another minute), so the first screen after a long pause can take two minutes. The blueprint raises the timeouts for this (`ML_TIMEOUT_MS`, `VITE_API_TIMEOUT_MS`), and the API pokes the ML service as soon as it starts. Later requests take under a second. A free Postgres database is time-limited. Check the host's current terms before relying on it for a demo day, and warm the services first.
 - **The default demo credentials ship in the website bundle** (`VITE_DEMO_EMAIL` and `VITE_DEMO_PASSWORD`, falling back to the seeded demo account). Use the seeded demo account only.
 - **Weather and geocoding need outbound internet** from the backend. If Open-Meteo is unreachable the backend falls back to cached and then seasonal-average weather instead of failing.
 

@@ -14,6 +14,9 @@ const schema = z.object({
   CORS_ORIGIN: z.string().default('http://localhost:5173'),
   ML_SERVICE_URL: z.string().url().default('http://localhost:8001'),
   ML_MODE: z.enum(['online', 'offline']).default('online'),
+  // How long to wait for the ML service. 5s is plenty when it is always running; a free host that
+  // sleeps it needs about a minute for the first request after idle (see docs/DEPLOYMENT.md).
+  ML_TIMEOUT_MS: z.coerce.number().int().positive().default(5000),
   WEATHER_SERVICE_URL: z.string().url().default('https://api.open-meteo.com/v1'),
   GEOCODE_SERVICE_URL: z.string().url().default('https://geocoding-api.open-meteo.com/v1'),
 })

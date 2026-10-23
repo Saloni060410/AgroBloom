@@ -1,9 +1,13 @@
 import app from './app.js'
 import { env } from './config/env.js'
 import { prisma } from './config/db.js'
+import { health as mlHealth } from './services/mlService.js'
 
 const server = app.listen(env.PORT, () => {
-  process.stdout.write(`KhetGPT backend listening on :${env.PORT}\n`)
+  process.stdout.write(`AgroBloom backend listening on :${env.PORT}\n`)
+  // On a host that sleeps idle services the ML service is asleep too. This request wakes it while
+  // the first user request is still being handled; the answer is not needed, so failures are ignored.
+  if (env.NODE_ENV === 'production' && env.ML_MODE === 'online') mlHealth().catch(() => {})
 })
 
 // Security/reliability pass: without this, `docker compose down`/a container orchestrator's
